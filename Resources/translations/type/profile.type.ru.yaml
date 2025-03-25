@@ -1,0 +1,16 @@
+wb:
+
+  support:
+
+    name: 'Wildberries Support'
+    desc: 'Тип профиля Wildberries Support'
+
+  question:
+
+    name: 'Wildberries Questions'
+    desc: 'Тип профиля Wildberries Questions'
+
+  review:
+
+    name: "Wildberries Reviews"
+    desc: "Тип профиля Wildberries Reviews"

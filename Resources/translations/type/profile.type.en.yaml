@@ -1,0 +1,15 @@
+wb:
+  support:
+
+    name: 'Wildberries Support'
+    desc: 'Wildberries Support profile type'
+
+  question:
+
+    name: 'Wildberries Questions'
+    desc: 'Wildberries Questions profile type'
+
+  review:
+
+    name: "Wildberries Reviews"
+    desc: "Wildberries Reviews profile type"
