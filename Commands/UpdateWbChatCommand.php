@@ -33,6 +33,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
@@ -42,7 +43,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
     name: 'baks:wb-support:chat:update',
     description: 'Добавляет/обновляет все чаты и их сообщения'
 )]
-class UpdateWbChatCommand extends Command
+final class UpdateWbChatCommand extends Command
 {
     private SymfonyStyle $io;
 
@@ -63,21 +64,85 @@ class UpdateWbChatCommand extends Command
             ->onlyActiveToken()
             ->findAll();
 
-        $profile = $profiles->current();
+        $profiles = iterator_to_array($profiles);
 
-        $this->update($profile);
+        $helper = $this->getHelper('question');
 
-        $this->io->success('Чаты успешно обновлены');
 
+        /**
+         * Интерактивная форма списка профилей
+         */
+
+        $questions[] = 'Все';
+
+        foreach($profiles as $quest)
+        {
+            $questions[] = $quest->getAttr();
+        }
+
+        $questions['+'] = 'Выполнить все асинхронно';
+        $questions['-'] = 'Выйти';
+
+        $question = new ChoiceQuestion(
+            'Профиль пользователя (Ctrl+C чтобы выйти)',
+            $questions,
+            '0'
+        );
+
+        $key = $helper->ask($input, $output, $question);
+
+        /**
+         *  Выходим без выполненного запроса
+         */
+
+        if($key === '-' || $key === 'Выйти')
+        {
+            return Command::SUCCESS;
+        }
+
+        if($key === '+' || $key === '0' || $key === 'Все')
+        {
+            /** @var UserProfileUid $profile */
+            foreach($profiles as $profile)
+            {
+                $this->update($profile, $key === '+');
+            }
+
+            $this->io->success('Чаты успешно обновлены');
+            return Command::SUCCESS;
+        }
+
+        $UserProfileUid = null;
+
+        foreach($profiles as $profile)
+        {
+            if($profile->getAttr() === $questions[$key])
+            {
+                /* Присваиваем профиль пользователя */
+                $UserProfileUid = $profile;
+                break;
+            }
+        }
+
+        if($UserProfileUid)
+        {
+            $this->update($UserProfileUid);
+
+            $this->io->success('Чаты успешно обновлены');
+            return Command::SUCCESS;
+        }
+
+        $this->io->success('Профиль пользователя не найден');
         return Command::SUCCESS;
     }
 
-    private function update(UserProfileUid|string $profile): void
+    private function update(UserProfileUid|string $profile, bool $async = false): void
     {
         $this->io->note(sprintf('Обновляем профиль %s', $profile->getAttr()));
 
         $this->messageDispatch->dispatch(
             message: new GetWbCustomerMessageChatMessage($profile)->addAll(),
+            transport: $async === true ? (string) $profile : null
         );
     }
 }
