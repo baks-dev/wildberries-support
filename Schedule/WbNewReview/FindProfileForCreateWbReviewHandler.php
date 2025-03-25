@@ -29,6 +29,7 @@ use BaksDev\Core\Messenger\MessageDelay;
 use BaksDev\Core\Messenger\MessageDispatchInterface;
 use BaksDev\Users\Profile\UserProfile\Type\Id\UserProfileUid;
 use BaksDev\Wildberries\Repository\AllProfileToken\AllProfileTokenInterface;
+use BaksDev\Wildberries\Support\Messenger\Schedules\GetWbReviews\GetWbReviewsMessage;
 use BaksDev\Wildberries\Support\Schedule\WbNewQuestion\FindProfileForCreateWbQuestionMessage;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;

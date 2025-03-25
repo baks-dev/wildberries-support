@@ -26,14 +26,10 @@ declare(strict_types=1);
 namespace BaksDev\Wildberries\Support\Api\Question\QuestionsList;
 
 use BaksDev\Wildberries\Api\Wildberries;
+use DateInterval;
 use Generator;
 use Symfony\Contracts\Cache\ItemInterface;
-use DateInterval;
 
-/*
- * Метод предоставляет список вопросов по заданным фильтрам, получить данные отвеченных и неотвеченных вопросов, сортировать вопросы по дате и настроить пагинацию и количество вопросов в ответе
- * https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Voprosy/paths/~1api~1v1~1questions/get
- */
 final class GetWbQuestionsListRequest extends Wildberries
 {
     private int|false $from = false;
@@ -47,10 +43,14 @@ final class GetWbQuestionsListRequest extends Wildberries
         return $this;
     }
 
+    /**
+     * Метод предоставляет список вопросов по заданным фильтрам, получить данные отвеченных и неотвеченных вопросов,
+     * сортировать вопросы по дате и настроить пагинацию и количество вопросов в ответе
+     *
+     * @see https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Voprosy/paths/~1api~1v1~1questions/get
+     */
     public function findAll(): Generator|false
     {
-        $this->feedbacks();
-
         $skip = 0;
         $take = self::LIMIT;
 
@@ -74,6 +74,7 @@ final class GetWbQuestionsListRequest extends Wildberries
                 $item->expiresAfter(DateInterval::createFromDateString('1 seconds'));
 
                 $response = $this
+                    ->feedbacks()
                     ->TokenHttpClient()
                     ->request(
                         method: 'GET',

@@ -27,10 +27,6 @@ namespace BaksDev\Wildberries\Support\Api\Question\ReplyToQuestion;
 
 use BaksDev\Wildberries\Api\Wildberries;
 
-/**
- * Метод позволяет ответить на вопрос
- * https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Voprosy/paths/~1api~1v1~1questions/patch
- */
 final class PostWbReplyToQuestionRequest extends Wildberries
 {
     /** Идентификатор чата */
@@ -68,14 +64,19 @@ final class PostWbReplyToQuestionRequest extends Wildberries
         return $this;
     }
 
+    /**
+     * Метод позволяет ответить на вопрос
+     * @see https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Voprosy/paths/~1api~1v1~1questions/patch
+     */
     public function sendAnswer(): bool
     {
+        /**
+         * Выполнять операции запроса ТОЛЬКО в PROD окружении
+         */
         if(!$this->isExecuteEnvironment())
         {
             return false;
         }
-
-        $url = 'api/v1/questions';
 
         $json = [
             "id" => $this->chatId,
@@ -90,7 +91,7 @@ final class PostWbReplyToQuestionRequest extends Wildberries
             ->TokenHttpClient()
             ->request(
                 method: 'PATCH',
-                url: $url,
+                url: 'api/v1/questions',
                 options: ["json" => $json]
             );
 
@@ -101,8 +102,8 @@ final class PostWbReplyToQuestionRequest extends Wildberries
             $this->logger->critical(
                 sprintf('wildberries-support: Ошибка отправки ответа на вопрос'),
                 [
+                    $content,
                     self::class.':'.__LINE__,
-                    $content
                 ]);
 
             return false;

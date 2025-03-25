@@ -26,9 +26,9 @@ declare(strict_types=1);
 namespace BaksDev\Wildberries\Support\Api\Review\ReviewsList;
 
 use BaksDev\Wildberries\Api\Wildberries;
+use DateInterval;
 use Generator;
 use Symfony\Contracts\Cache\ItemInterface;
-use DateInterval;
 
 /*
  * Метод предоставляет список отзывов по заданным фильтрам. Вы можете:
@@ -53,8 +53,6 @@ final class GetWbReviewsListRequest extends Wildberries
 
     public function findAll(): Generator|false
     {
-        $this->feedbacks();
-
         $take = self::LIMIT;
         $skip = 0;
 
@@ -78,6 +76,7 @@ final class GetWbReviewsListRequest extends Wildberries
                 $item->expiresAfter(DateInterval::createFromDateString('1 seconds'));
 
                 $response = $this
+                    ->feedbacks()
                     ->TokenHttpClient()
                     ->request(
                         method: 'GET',

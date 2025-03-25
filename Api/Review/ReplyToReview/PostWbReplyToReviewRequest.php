@@ -27,10 +27,7 @@ namespace BaksDev\Wildberries\Support\Api\Review\ReplyToReview;
 
 use BaksDev\Wildberries\Api\Wildberries;
 
-/*
- * Метод позволяет ответить на отзыв покупателя.
- * https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Otzyvy/paths/~1api~1v1~1feedbacks~1answer/post
- */
+
 final class PostWbReplyToReviewRequest extends Wildberries
 {
     /** Идентификатор чата */
@@ -55,8 +52,15 @@ final class PostWbReplyToReviewRequest extends Wildberries
         return $this;
     }
 
+    /**
+     * Метод позволяет ответить на отзыв покупателя.
+     * @see https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Otzyvy/paths/~1api~1v1~1feedbacks~1answer/post
+     */
     public function sendMessage(): bool
     {
+        /**
+         * Выполнять операции запроса ТОЛЬКО в PROD окружении
+         */
         if(!$this->isExecuteEnvironment())
         {
             return false;

@@ -30,13 +30,12 @@ use DateInterval;
 use Generator;
 use Symfony\Contracts\Cache\ItemInterface;
 
-/**
- * Метод позволяет получить список событий (сообщений).
- * https://dev.wildberries.ru/ru/openapi/user-communication#tag/Chat-s-pokupatelyami/paths/~1api~1v1~1seller~1events/get
- */
 final class GetWbChatsMessagesRequest extends Wildberries
 {
-    /** Необязательное свойство для пагинации. С какого момента получить следующий пакет данных. Формат Unix timestamp с миллисекундами */
+    /**
+     * Необязательное свойство для пагинации. С какого момента получить следующий пакет данных.
+     * Формат Unix timestamp с миллисекундами
+     */
     private int|false $next = false;
 
     public function next(int $next): self
@@ -46,20 +45,23 @@ final class GetWbChatsMessagesRequest extends Wildberries
         return $this;
     }
 
-    /** Вернет сообщения, начиная со самых старых */
+    /**
+     * Метод позволяет получить список событий (сообщений).
+     * @see https://dev.wildberries.ru/ru/openapi/user-communication#tag/Chat-s-pokupatelyami/paths/~1api~1v1~1seller~1events/get
+     */
     public function findAll(): Generator|false
     {
-        $this->buyerChat();
-
         while(true)
         {
             $cache = $this->getCacheInit('wildberries-support');
             $key = md5(self::class.$this->getProfile().$this->next);
 
             $content = $cache->get($key, function(ItemInterface $item) {
+
                 $item->expiresAfter(DateInterval::createFromDateString('1 seconds'));
 
                 $response = $this
+                    ->buyerChat()
                     ->TokenHttpClient()
                     ->request(
                         method: 'GET',
@@ -70,6 +72,7 @@ final class GetWbChatsMessagesRequest extends Wildberries
                             ]
                         ],
                     );
+
                 $content = $response->toArray(false);
 
                 if($response->getStatusCode() !== 200)

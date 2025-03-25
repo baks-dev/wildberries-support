@@ -26,13 +26,14 @@ declare(strict_types=1);
 namespace BaksDev\Wildberries\Support\Schedule\WbNewMessage;
 
 use BaksDev\Core\Schedule\ScheduleInterface;
-use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 use DateInterval;
+use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 #[AutoconfigureTag('baks.schedule')]
 final class FindProfileForCreateWbSupportSchedule implements ScheduleInterface
 {
     const string INTERVAL = '1 minutes';
+
     /** Возвращает экземпляр класса сообщения */
     public function getMessage(): object
     {

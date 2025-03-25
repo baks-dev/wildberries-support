@@ -27,14 +27,6 @@ namespace BaksDev\Wildberries\Support\Api\Question\CheckViewed;
 
 use BaksDev\Wildberries\Api\Wildberries;
 
-/*
- * В зависимости от тела запроса, метод позволяет:
- *
- * отметить вопрос как просмотренный
- * отклонить вопрос
- * ответить на вопрос или отредактировать ответ
- * https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Voprosy/paths/~1api~1v1~1questions/patch
- */
 final class PatchWbCheckQuestionViewedRequest extends Wildberries
 {
     /** Идентификатор вопроса */
@@ -47,6 +39,14 @@ final class PatchWbCheckQuestionViewedRequest extends Wildberries
         return $this;
     }
 
+    /**
+     * В зависимости от тела запроса, метод позволяет:
+     *
+     * отметить вопрос как просмотренный
+     * отклонить вопрос
+     * ответить на вопрос или отредактировать ответ
+     * https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Voprosy/paths/~1api~1v1~1questions/patch
+     */
     public function send(): bool
     {
         if(!$this->isExecuteEnvironment())
@@ -75,8 +75,8 @@ final class PatchWbCheckQuestionViewedRequest extends Wildberries
             $this->logger->critical(
                 sprintf('wildberries-support: Ошибка отметки вопроса как прочитанного'),
                 [
+                    $content,
                     self::class.':'.__LINE__,
-                    $content
                 ]);
 
             return false;

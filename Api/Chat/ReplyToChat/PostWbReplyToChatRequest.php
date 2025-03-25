@@ -27,10 +27,7 @@ namespace BaksDev\Wildberries\Support\Api\Chat\ReplyToChat;
 
 use BaksDev\Wildberries\Api\Wildberries;
 
-/*
- * Метод отправляет сообщения в чат с покупателем
- * https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Chat-s-pokupatelyami/paths/~1api~1v1~1seller~1message/post
- */
+
 final class PostWbReplyToChatRequest extends Wildberries
 {
     /** Подпись чата */
@@ -55,6 +52,10 @@ final class PostWbReplyToChatRequest extends Wildberries
         return $this;
     }
 
+    /**
+     * Метод отправляет сообщения в чат с покупателем
+     * @see https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Chat-s-pokupatelyami/paths/~1api~1v1~1seller~1message/post
+     */
     public function sendMessage(): bool
     {
         /** Проверка, чтобы в тестовом окружении не отправлялись сообщения */
@@ -86,8 +87,8 @@ final class PostWbReplyToChatRequest extends Wildberries
             $this->logger->critical(
                 sprintf('wildberries-support: Ошибка отправки ответа на отзыв'),
                 [
+                    $content,
                     self::class.':'.__LINE__,
-                    $content
                 ]);
 
             return false;
