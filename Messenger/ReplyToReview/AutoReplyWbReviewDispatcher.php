@@ -45,9 +45,9 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 final readonly class AutoReplyWbReviewDispatcher
 {
     public function __construct(
-        #[Target('wildberriesSupportLogger')] private readonly LoggerInterface $logger,
-        private readonly SupportHandler $supportHandler,
-        private readonly CurrentSupportEventRepository $currentSupportEvent,
+        #[Target('wildberriesSupportLogger')] private LoggerInterface $logger,
+        private SupportHandler $supportHandler,
+        private CurrentSupportEventRepository $currentSupportEvent,
     ) {}
 
     public function __invoke(AutoReplyWbReviewMessage $message): void
@@ -110,6 +110,18 @@ final readonly class AutoReplyWbReviewDispatcher
         if($reviewRating < 3)
         {
             $answerMessage = $AutoMessagesReply->low();
+        }
+
+        /**
+         * Если известно имя клиента - подставляем для приветствия
+         * @var SupportMessageDTO $currentMessage
+         */
+        $currentMessage = $supportDTO->getMessages()->current();
+        $clientName = $currentMessage->getName();
+
+        if(!empty($clientName))
+        {
+            $answerMessage = sprintf('Здравствуйте %s! ', $clientName).$answerMessage;
         }
 
         /** Отправляем сообщение клиенту */

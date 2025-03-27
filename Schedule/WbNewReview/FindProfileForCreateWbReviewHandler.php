@@ -30,7 +30,6 @@ use BaksDev\Core\Messenger\MessageDispatchInterface;
 use BaksDev\Users\Profile\UserProfile\Type\Id\UserProfileUid;
 use BaksDev\Wildberries\Repository\AllProfileToken\AllProfileTokenInterface;
 use BaksDev\Wildberries\Support\Messenger\Schedules\GetWbReviews\GetWbReviewsMessage;
-use BaksDev\Wildberries\Support\Schedule\WbNewQuestion\FindProfileForCreateWbQuestionMessage;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -50,7 +49,7 @@ final readonly class FindProfileForCreateWbReviewHandler
         private AllProfileTokenInterface $allProfileTokens,
     ) {}
 
-    public function __invoke(FindProfileForCreateWbQuestionMessage $message): void
+    public function __invoke(FindProfileForCreateWbReviewMessage $message): void
     {
         /** Идентификаторы профилей пользователей, у которых есть активный токен WB */
         $profiles = $this->allProfileTokens
