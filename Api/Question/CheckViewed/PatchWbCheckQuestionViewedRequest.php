@@ -54,14 +54,12 @@ final class PatchWbCheckQuestionViewedRequest extends Wildberries
             return false;
         }
 
-        $url = 'api/v1/feedbacks/questions';
-
         $response = $this
             ->feedbacks()
             ->TokenHttpClient()
             ->request(
                 method: 'PATCH',
-                url: $url,
+                url: '/api/v1/questions',
                 options: ["json" => [
                     'id' => $this->id,
                     'wasViewed' => true,

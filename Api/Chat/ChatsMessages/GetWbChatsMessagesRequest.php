@@ -65,7 +65,7 @@ final class GetWbChatsMessagesRequest extends Wildberries
                     ->TokenHttpClient()
                     ->request(
                         method: 'GET',
-                        url: 'api/v1/seller/events',
+                        url: '/api/v1/seller/events',
                         options: $this->next === false ? [] : [
                             "query" => [
                                 "next" => $this->next,

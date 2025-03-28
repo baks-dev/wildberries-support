@@ -119,7 +119,7 @@ final readonly class AutoReplyWbReviewDispatcher
         $currentMessage = $supportDTO->getMessages()->current();
         $clientName = $currentMessage->getName();
 
-        if(!empty($clientName))
+        if(!empty($clientName) && $clientName !== 'Покупатель')
         {
             $answerMessage = sprintf('Здравствуйте %s! ', $clientName).$answerMessage;
         }
