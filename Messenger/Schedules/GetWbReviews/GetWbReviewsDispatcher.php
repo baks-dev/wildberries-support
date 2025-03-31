@@ -43,6 +43,8 @@ use BaksDev\Wildberries\Support\Api\Review\ReviewsList\GetWbReviewsListRequest;
 use BaksDev\Wildberries\Support\Api\Review\ReviewsList\WbReviewMessageDTO;
 use BaksDev\Wildberries\Support\Messenger\ReplyToReview\AutoReplyWbReviewMessage;
 use BaksDev\Wildberries\Support\Type\WbReviewProfileType;
+use DateTimeImmutable;
+use DateTimeZone;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -69,28 +71,38 @@ final class GetWbReviewsDispatcher
 
     public function __invoke(GetWbReviewsMessage $message): void
     {
-        $profile = $message->getProfile();
+        /**
+         * Ограничиваем лимит сообщений по дате, если вызван диспетчер не из консольной комманды
+         * @see UpdateWbReviewCommand
+         */
+        if(false === $message->getAddAll())
+        {
+            $timezone = new DateTimeZone(date_default_timezone_get());
+
+            $DateTimeFrom = new DateTimeImmutable()
+                ->setTimezone($timezone)
+                ->getTimestamp();
+
+            $DateTimeFrom -= (self::ITERATION_TIMESTAMP + 60); // + 1 минута запас на runtime
+
+            $this->GetWbReviewsListRequest->from($DateTimeFrom);
+        }
+
+        $UserProfileUid = $message->getProfile();
 
         /**
          * Получаем новые отзывы
          * @see GetWbReviewsListRequest
          */
 
-        $this->GetWbReviewsListRequest->profile($message->getProfile());
-
-        if(!$message->getAddAll())
-        {
-            $this->GetWbReviewsListRequest->from((time() - self::ITERATION_TIMESTAMP));
-        }
-
-        $reviews = $this->GetWbReviewsListRequest->findAll();
+        $reviews = $this->GetWbReviewsListRequest
+            ->profile($UserProfileUid)
+            ->findAll();
 
         if(false === $reviews || false === $reviews->valid())
         {
             return;
         }
-
-        $reviews = iterator_to_array($reviews);
 
         /** @var WbReviewMessageDTO $review */
         foreach($reviews as $review)
@@ -117,7 +129,7 @@ final class GetWbReviewsDispatcher
 
             /** SupportInvariable */
             $supportInvariableDTO = new SupportInvariableDTO();
-            $supportInvariableDTO->setProfile($profile);
+            $supportInvariableDTO->setProfile($UserProfileUid);
             $supportInvariableDTO->setType(new TypeProfileUid(WbReviewProfileType::TYPE));
             $supportInvariableDTO->setTicket($ticket);
 
@@ -162,7 +174,7 @@ final class GetWbReviewsDispatcher
                         sprintf('wildberries-support: Ошибка %s при создании/обновлении отзывов', $handle),
                         [
                             self::class.':'.__LINE__,
-                            $profile,
+                            $UserProfileUid,
                             $supportDTO->getInvariable()?->getTicket(),
                         ],
                     );

@@ -42,6 +42,8 @@ use BaksDev\Wildberries\Support\Api\Question\CheckViewed\PatchWbCheckQuestionVie
 use BaksDev\Wildberries\Support\Api\Question\QuestionsList\GetWbQuestionsListRequest;
 use BaksDev\Wildberries\Support\Api\Question\QuestionsList\WbQuestionMessageDTO;
 use BaksDev\Wildberries\Support\Type\WbQuestionProfileType;
+use DateTimeImmutable;
+use DateTimeZone;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -71,28 +73,37 @@ final class GetWbQuestionsDispatcher
 
     public function __invoke(GetWbQuestionsMessage $message): void
     {
-        $profile = $message->getProfile();
+        /**
+         * Ограничиваем лимит сообщений по дате, если вызван диспетчер не из консольной комманды
+         * @see UpdateWbQuestionCommand
+         */
+        if(false === $message->getAddAll())
+        {
+            $timezone = new DateTimeZone(date_default_timezone_get());
+
+            $DateTimeFrom = new DateTimeImmutable()
+                ->setTimezone($timezone)
+                ->getTimestamp();
+
+            $DateTimeFrom -= (self::ITERATION_TIMESTAMP + 60); // + 1 минута запас на runtime
+
+            $this->GetWbQuestionsListRequest->from($DateTimeFrom);
+        }
+
+        $UserProfileUid = $message->getProfile();
 
         /**
          * Получаем новые вопросы
          * @see GetWbQuestionsListRequest
          */
-
-        $this->GetWbQuestionsListRequest->profile($message->getProfile());
-
-        if(!$message->getAddAll())
-        {
-            $this->GetWbQuestionsListRequest->from((time() - self::ITERATION_TIMESTAMP));
-        }
-
-        $questions = $this->GetWbQuestionsListRequest->findAll();
+        $questions = $this->GetWbQuestionsListRequest
+            ->profile($UserProfileUid)
+            ->findAll();
 
         if(false === $questions || false === $questions->valid())
         {
             return;
         }
-        
-        $questions = iterator_to_array($questions);
 
         /** @var WbQuestionMessageDTO $question */
         foreach($questions as $question)
@@ -119,7 +130,7 @@ final class GetWbQuestionsDispatcher
 
             /** SupportInvariable */
             $supportInvariableDTO = new SupportInvariableDTO();
-            $supportInvariableDTO->setProfile($profile);
+            $supportInvariableDTO->setProfile($UserProfileUid);
             $supportInvariableDTO->setType(new TypeProfileUid(WbQuestionProfileType::TYPE));
             $supportInvariableDTO->setTicket($ticket);
 
@@ -154,7 +165,7 @@ final class GetWbQuestionsDispatcher
             $this->isAddMessage ?: $this->isAddMessage = true;
 
             $this->patchWbCheckQuestionViewedRequest
-                ->profile($profile)
+                ->profile($UserProfileUid)
                 ->id($ticket)
                 ->send();
 
@@ -169,7 +180,7 @@ final class GetWbQuestionsDispatcher
                         sprintf('wildberries-support: Ошибка %s при создании/обновлении чата поддержки', $handle),
                         [
                             self::class.':'.__LINE__,
-                            $profile,
+                            $UserProfileUid,
                             $supportDTO->getInvariable()?->getTicket(),
                         ],
                     );

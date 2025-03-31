@@ -41,9 +41,11 @@ use BaksDev\Users\Profile\TypeProfile\Type\Id\TypeProfileUid;
 use BaksDev\Wildberries\Support\Api\Chat\ChatsMessages\GetWbChatsMessagesRequest;
 use BaksDev\Wildberries\Support\Api\Chat\ChatsMessages\WbChatMessageDTO;
 use BaksDev\Wildberries\Support\Type\WbChatProfileType;
+use DateTimeImmutable;
+use DateTimeZone;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\DependencyInjection\Attribute\Target;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
  * Получает новые сообщения из чатов с покупателями WB
@@ -67,26 +69,34 @@ final class GetWbCustomerMessageChatDispatcher
 
     public function __invoke(GetWbCustomerMessageChatMessage $message): void
     {
-        $profile = $message->getProfile();
-
-        $this->chatsMessagesRequest
-            ->profile($profile);
-
+        /**
+         * Ограничиваем лимит сообщений по дате, если вызван диспетчер не из консольной комманды
+         * @see UpdateWbChatCommand
+         */
         if($message->getAddAll() === false)
         {
-            /** Приводим стандартный timestamp к таймстампу в миллисекундах (согласно документации WBApi) */
-            $time = (time() - self::ITERATION_TIMESTAMP) * 1000;
-            $this->chatsMessagesRequest->next($time);
+            $timezone = new DateTimeZone(date_default_timezone_get());
+
+            $DateTimeFrom = new DateTimeImmutable()
+                ->setTimezone($timezone)
+                ->getTimestamp();
+
+            $DateTimeFrom -= (self::ITERATION_TIMESTAMP + 60); // + 1 минута запас на runtime
+            $DateTimeFrom *= 1000; // Приводим к миллисекундам согласно документации WBApi
+
+            $this->chatsMessagesRequest->next($DateTimeFrom);
         }
 
-        $messagesChat = $this->chatsMessagesRequest->findAll();
+        $UserProfileUid = $message->getProfile();
+
+        $messagesChat = $this->chatsMessagesRequest
+            ->profile($UserProfileUid)
+            ->findAll();
 
         if(false === $messagesChat || false === $messagesChat->valid())
         {
             return;
         }
-
-        $messagesChat = iterator_to_array($messagesChat);
 
         /** @var WbChatMessageDTO $chatMessage */
         foreach($messagesChat as $chatMessage)
@@ -99,9 +109,11 @@ final class GetWbCustomerMessageChatDispatcher
             {
                 return;
             }
+
             if ($chatMessage->getData() === '') {
                 continue;
             }
+
             $ticket = $chatMessage->getChatId();
             
             /** SupportEvent */
@@ -111,7 +123,7 @@ final class GetWbCustomerMessageChatDispatcher
 
             /** SupportInvariable */
             $supportInvariableDTO = new SupportInvariableDTO();
-            $supportInvariableDTO->setProfile($profile);
+            $supportInvariableDTO->setProfile($UserProfileUid);
             $supportInvariableDTO->setType(new TypeProfileUid(WbChatProfileType::TYPE));
             $supportInvariableDTO->setTicket($ticket);
 
@@ -175,7 +187,7 @@ final class GetWbCustomerMessageChatDispatcher
                         sprintf('wildberries-support: Ошибка %s при создании/обновлении чата поддержки', $handle),
                         [
                             self::class.':'.__LINE__,
-                            $profile,
+                            $UserProfileUid,
                             $supportDTO->getInvariable()?->getTicket(),
                         ],
                     );
