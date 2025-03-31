@@ -121,7 +121,7 @@ final readonly class AutoReplyWbReviewDispatcher
 
         if(!empty($clientName) && $clientName !== 'Покупатель')
         {
-            $answerMessage = sprintf('Здравствуйте %s! ', $clientName).$answerMessage;
+            $answerMessage = sprintf('Здравствуйте, %s! ', $clientName).$answerMessage;
         }
 
         /** Отправляем сообщение клиенту */

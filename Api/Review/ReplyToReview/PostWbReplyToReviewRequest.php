@@ -82,15 +82,12 @@ final class PostWbReplyToReviewRequest extends Wildberries
                 options: ["json" => $json]
             );
 
-        $content = $response->getContent(false);
-
-        if($response->getStatusCode() !== 200)
+        if($response->getStatusCode() !== 204)
         {
             $this->logger->critical(
                 sprintf('wildberries-support: Ошибка отправки ответа на отзыв'),
                 [
                     self::class.':'.__LINE__,
-                    $content
                 ]);
 
             return false;

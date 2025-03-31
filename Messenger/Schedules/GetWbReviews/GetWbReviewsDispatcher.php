@@ -39,13 +39,13 @@ use BaksDev\Support\UseCase\Admin\New\Message\SupportMessageDTO;
 use BaksDev\Support\UseCase\Admin\New\SupportDTO;
 use BaksDev\Support\UseCase\Admin\New\SupportHandler;
 use BaksDev\Users\Profile\TypeProfile\Type\Id\TypeProfileUid;
-use BaksDev\Wildberries\Support\Api\Review\ReviewsList\WbReviewMessageDTO;
 use BaksDev\Wildberries\Support\Api\Review\ReviewsList\GetWbReviewsListRequest;
+use BaksDev\Wildberries\Support\Api\Review\ReviewsList\WbReviewMessageDTO;
+use BaksDev\Wildberries\Support\Messenger\ReplyToReview\AutoReplyWbReviewMessage;
 use BaksDev\Wildberries\Support\Type\WbReviewProfileType;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use BaksDev\Wildberries\Support\Messenger\ReplyToReview\AutoReplyWbReviewMessage;
 
 /**
  * Получает новые вопросы WB
@@ -188,6 +188,13 @@ final class GetWbReviewsDispatcher
 
             if($reviewRating === 5 || empty($review->getIsText()))
             {
+                /**
+                 * Максимум 1 запрос в секунду
+                 * @see https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Otzyvy/paths/~1api~1v1~1feedbacks~1answer/post
+                 */
+
+                sleep(1);
+
                 /** @var Support $handle */
                 $this->messageDispatch->dispatch(
                     message: new AutoReplyWbReviewMessage($handle->getId(), $reviewRating),
