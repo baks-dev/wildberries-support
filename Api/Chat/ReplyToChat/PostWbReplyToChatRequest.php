@@ -59,7 +59,7 @@ final class PostWbReplyToChatRequest extends Wildberries
     public function sendMessage(): bool
     {
         /** Проверка, чтобы в тестовом окружении не отправлялись сообщения */
-        if(!$this->isExecuteEnvironment())
+        if(false === $this->isExecuteEnvironment())
         {
             return false;
         }

@@ -26,7 +26,9 @@ declare(strict_types=1);
 namespace BaksDev\Wildberries\Support\Messenger\Schedules\GetWbChatsMessages;
 
 use BaksDev\Users\Profile\UserProfile\Type\Id\UserProfileUid;
+use Symfony\Component\DependencyInjection\Attribute\Exclude;
 
+#[Exclude]
 final class GetWbCustomerMessageChatMessage
 {
     /**

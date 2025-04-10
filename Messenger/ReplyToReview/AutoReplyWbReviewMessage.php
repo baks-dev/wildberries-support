@@ -26,7 +26,9 @@ declare(strict_types=1);
 namespace BaksDev\Wildberries\Support\Messenger\ReplyToReview;
 
 use BaksDev\Support\Type\Id\SupportUid;
+use Symfony\Component\DependencyInjection\Attribute\Exclude;
 
+#[Exclude]
 final readonly class AutoReplyWbReviewMessage
 {
     public function __construct(

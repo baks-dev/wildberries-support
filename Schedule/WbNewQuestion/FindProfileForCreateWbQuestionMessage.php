@@ -25,5 +25,8 @@ declare(strict_types=1);
 
 namespace BaksDev\Wildberries\Support\Schedule\WbNewQuestion;
 
+use Symfony\Component\DependencyInjection\Attribute\Exclude;
+
+#[Exclude]
 final readonly class FindProfileForCreateWbQuestionMessage
 {}

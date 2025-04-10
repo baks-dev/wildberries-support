@@ -49,7 +49,7 @@ final class PatchWbCheckQuestionViewedRequest extends Wildberries
      */
     public function send(): bool
     {
-        if(!$this->isExecuteEnvironment())
+        if(false === $this->isExecuteEnvironment())
         {
             return false;
         }

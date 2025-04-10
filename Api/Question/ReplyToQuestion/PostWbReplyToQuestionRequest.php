@@ -73,7 +73,7 @@ final class PostWbReplyToQuestionRequest extends Wildberries
         /**
          * Выполнять операции запроса ТОЛЬКО в PROD окружении
          */
-        if(!$this->isExecuteEnvironment())
+        if(false === $this->isExecuteEnvironment())
         {
             return false;
         }

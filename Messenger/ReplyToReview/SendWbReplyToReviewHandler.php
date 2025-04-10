@@ -42,10 +42,10 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 final readonly class SendWbReplyToReviewHandler
 {
     public function __construct(
-        #[Target('wildberriesSupportLogger')] private readonly LoggerInterface $logger,
-        private readonly  MessageDispatchInterface $messageDispatch,
-        private readonly CurrentSupportEventRepository $currentSupportEvent,
-        private readonly PostWbReplyToReviewRequest $sendMessageRequest,
+        #[Target('wildberriesSupportLogger')] private LoggerInterface $logger,
+        private MessageDispatchInterface $messageDispatch,
+        private CurrentSupportEventRepository $currentSupportEvent,
+        private PostWbReplyToReviewRequest $sendMessageRequest,
     )
     {}
 
