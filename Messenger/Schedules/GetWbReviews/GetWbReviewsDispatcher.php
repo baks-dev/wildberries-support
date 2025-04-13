@@ -42,7 +42,9 @@ use BaksDev\Users\Profile\TypeProfile\Type\Id\TypeProfileUid;
 use BaksDev\Wildberries\Support\Api\Review\ReviewsList\GetWbReviewsListRequest;
 use BaksDev\Wildberries\Support\Api\Review\ReviewsList\WbReviewMessageDTO;
 use BaksDev\Wildberries\Support\Messenger\ReplyToReview\AutoReplyWbReviewMessage;
+use BaksDev\Wildberries\Support\Schedule\WbNewReview\FindProfileForCreateWbReviewSchedule;
 use BaksDev\Wildberries\Support\Type\WbReviewProfileType;
+use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
 use Psr\Log\LoggerInterface;
@@ -77,13 +79,16 @@ final class GetWbReviewsDispatcher
          */
         if(false === $message->getAddAll())
         {
-            $timezone = new DateTimeZone(date_default_timezone_get());
-
             $DateTimeFrom = new DateTimeImmutable()
-                ->setTimezone($timezone)
-                ->getTimestamp();
+                ->setTimezone(new DateTimeZone('GMT'))
 
-            $DateTimeFrom -= (self::ITERATION_TIMESTAMP + 60); // + 1 минута запас на runtime
+                // периодичность scheduler
+                ->sub(DateInterval::createFromDateString(FindProfileForCreateWbReviewSchedule::INTERVAL))
+
+                // 1 минута запас на runtime
+                ->sub(DateInterval::createFromDateString('1 minute'))
+
+                ->getTimestamp();
 
             $this->GetWbReviewsListRequest->from($DateTimeFrom);
         }

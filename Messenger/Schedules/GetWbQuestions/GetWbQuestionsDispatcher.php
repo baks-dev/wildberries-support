@@ -41,7 +41,9 @@ use BaksDev\Users\Profile\TypeProfile\Type\Id\TypeProfileUid;
 use BaksDev\Wildberries\Support\Api\Question\CheckViewed\PatchWbCheckQuestionViewedRequest;
 use BaksDev\Wildberries\Support\Api\Question\QuestionsList\GetWbQuestionsListRequest;
 use BaksDev\Wildberries\Support\Api\Question\QuestionsList\WbQuestionMessageDTO;
+use BaksDev\Wildberries\Support\Schedule\WbNewQuestion\FindProfileForCreateWbQuestionSchedule;
 use BaksDev\Wildberries\Support\Type\WbQuestionProfileType;
+use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
 use Psr\Log\LoggerInterface;
@@ -57,9 +59,6 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 final class GetWbQuestionsDispatcher
 {
     private bool $isAddMessage = false;
-
-    /** За какое количество времени (в сек) запрашивать сообщения по API */
-    const int ITERATION_TIMESTAMP = 60;
 
     public function __construct(
         #[Target('wildberriesSupportLogger')] private readonly LoggerInterface $logger,
@@ -79,13 +78,16 @@ final class GetWbQuestionsDispatcher
          */
         if(false === $message->getAddAll())
         {
-            $timezone = new DateTimeZone(date_default_timezone_get());
-
             $DateTimeFrom = new DateTimeImmutable()
-                ->setTimezone($timezone)
-                ->getTimestamp();
+                ->setTimezone(new DateTimeZone('GMT'))
 
-            $DateTimeFrom -= (self::ITERATION_TIMESTAMP + 60); // + 1 минута запас на runtime
+                // периодичность scheduler
+                ->sub(DateInterval::createFromDateString(FindProfileForCreateWbQuestionSchedule::INTERVAL))
+
+                // 1 минута запас на runtime
+                ->sub(DateInterval::createFromDateString('1 minute'))
+
+                ->getTimestamp();
 
             $this->GetWbQuestionsListRequest->from($DateTimeFrom);
         }

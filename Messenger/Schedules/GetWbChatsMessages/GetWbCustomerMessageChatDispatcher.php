@@ -40,7 +40,9 @@ use BaksDev\Support\UseCase\Admin\New\SupportHandler;
 use BaksDev\Users\Profile\TypeProfile\Type\Id\TypeProfileUid;
 use BaksDev\Wildberries\Support\Api\Chat\ChatsMessages\GetWbChatsMessagesRequest;
 use BaksDev\Wildberries\Support\Api\Chat\ChatsMessages\WbChatMessageDTO;
+use BaksDev\Wildberries\Support\Schedule\WbNewReview\FindProfileForCreateWbReviewSchedule;
 use BaksDev\Wildberries\Support\Type\WbChatProfileType;
+use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
 use Psr\Log\LoggerInterface;
@@ -55,17 +57,13 @@ final class GetWbCustomerMessageChatDispatcher
 {
     private bool $isAddMessage = false;
 
-    /** За какое количество времени (в сек) запрашивать сообщения по API */
-    const int ITERATION_TIMESTAMP = 60;
-
     public function __construct(
         #[Target('wildberriesSupportLogger')] private readonly LoggerInterface $logger,
         private readonly DeduplicatorInterface $deduplicator,
         private readonly GetWbChatsMessagesRequest $chatsMessagesRequest,
         private readonly CurrentSupportEventByTicketInterface $supportByWbChat,
         private readonly SupportHandler $supportHandler,
-    )
-    {}
+    ) {}
 
     public function __invoke(GetWbCustomerMessageChatMessage $message): void
     {
@@ -75,13 +73,17 @@ final class GetWbCustomerMessageChatDispatcher
          */
         if($message->getAddAll() === false)
         {
-            $timezone = new DateTimeZone(date_default_timezone_get());
-
             $DateTimeFrom = new DateTimeImmutable()
-                ->setTimezone($timezone)
+                ->setTimezone(new DateTimeZone('GMT'))
+
+                // периодичность scheduler
+                ->sub(DateInterval::createFromDateString(FindProfileForCreateWbReviewSchedule::INTERVAL))
+
+                // 1 минута запас на runtime
+                ->sub(DateInterval::createFromDateString('1 minute'))
+
                 ->getTimestamp();
 
-            $DateTimeFrom -= (self::ITERATION_TIMESTAMP + 60); // + 1 минута запас на runtime
             $DateTimeFrom *= 1000; // Приводим к миллисекундам согласно документации WBApi
 
             $this->chatsMessagesRequest->next($DateTimeFrom);
@@ -110,12 +112,13 @@ final class GetWbCustomerMessageChatDispatcher
                 return;
             }
 
-            if ($chatMessage->getData() === '') {
+            if($chatMessage->getData() === '')
+            {
                 continue;
             }
 
             $ticket = $chatMessage->getChatId();
-            
+
             /** SupportEvent */
             $supportDTO = new SupportDTO();
             $supportDTO->setPriority(new SupportPriority(SupportPriorityLow::class));
@@ -177,7 +180,7 @@ final class GetWbCustomerMessageChatDispatcher
             $this->isAddMessage ?: $this->isAddMessage = true;
 
             /** Сохраняем, если имеются новые сообщения в массиве */
-            if (true === $this->isAddMessage)
+            if(true === $this->isAddMessage)
             {
                 $handle = $this->supportHandler->handle($supportDTO);
 
@@ -194,7 +197,7 @@ final class GetWbCustomerMessageChatDispatcher
                 }
             }
         }
-        
+
         $Deduplicator->save();
     }
 }
