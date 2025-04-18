@@ -26,6 +26,7 @@ declare(strict_types=1);
 namespace BaksDev\Wildberries\Support\Api\Chat\ChatsMessages;
 
 use BaksDev\Wildberries\Api\Wildberries;
+use BaksDev\Wildberries\Support\Schedule\WbNewMessage\FindProfileForCreateWbSupportSchedule;
 use DateInterval;
 use Generator;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -86,7 +87,11 @@ final class GetWbChatsMessagesRequest extends Wildberries
                     return false;
                 }
 
-                $item->expiresAfter(DateInterval::createFromDateString('1 hours'));
+                $item->expiresAfter(
+                    DateInterval::createFromDateString(
+                        FindProfileForCreateWbSupportSchedule::INTERVAL
+                    )
+                );
 
                 return $content;
             });

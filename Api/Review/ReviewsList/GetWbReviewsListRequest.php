@@ -26,6 +26,7 @@ declare(strict_types=1);
 namespace BaksDev\Wildberries\Support\Api\Review\ReviewsList;
 
 use BaksDev\Wildberries\Api\Wildberries;
+use BaksDev\Wildberries\Support\Schedule\WbNewReview\FindProfileForCreateWbReviewSchedule;
 use DateInterval;
 use Generator;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -38,6 +39,7 @@ use Symfony\Contracts\Cache\ItemInterface;
  * настроить пагинацию и количество отзывов в ответе
  * https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Otzyvy/paths/~1api~1v1~1feedbacks/get
  */
+
 final class GetWbReviewsListRequest extends Wildberries
 {
     private int|false $from = false;
@@ -73,6 +75,7 @@ final class GetWbReviewsListRequest extends Wildberries
             }
 
             $content = $cache->get($key, function(ItemInterface $item) use ($query) {
+
                 $item->expiresAfter(DateInterval::createFromDateString('1 seconds'));
 
                 $response = $this
@@ -100,14 +103,19 @@ final class GetWbReviewsListRequest extends Wildberries
                     return false;
                 }
 
-                $item->expiresAfter(DateInterval::createFromDateString('1 hours'));
+                $item->expiresAfter(
+                    DateInterval::createFromDateString(
+                        FindProfileForCreateWbReviewSchedule::INTERVAL
+                    )
+                );
 
                 return $content;
             });
 
             $reviews = $content['data']['feedbacks'];
 
-            if(count($reviews) === 0) {
+            if(count($reviews) === 0)
+            {
                 break;
             }
 

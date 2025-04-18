@@ -84,7 +84,9 @@ final readonly class AutoReplyWbReviewDispatcher
             return;
         }
 
-        // проверяем тип профиля у чата
+        /**
+         * Пропускаем если тикет не является Wildberries Support Review «Отзыв»
+         */
         $supportProfileType = $supportInvariableDTO->getType();
 
         if(false === $supportProfileType->equals(WbReviewProfileType::TYPE))

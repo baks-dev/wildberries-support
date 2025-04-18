@@ -26,6 +26,7 @@ declare(strict_types=1);
 namespace BaksDev\Wildberries\Support\Api\Question\QuestionsList;
 
 use BaksDev\Wildberries\Api\Wildberries;
+use BaksDev\Wildberries\Support\Schedule\WbNewQuestion\FindProfileForCreateWbQuestionSchedule;
 use DateInterval;
 use Generator;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -98,7 +99,11 @@ final class GetWbQuestionsListRequest extends Wildberries
                     return false;
                 }
 
-                $item->expiresAfter(DateInterval::createFromDateString('1 hours'));
+                $item->expiresAfter(
+                    DateInterval::createFromDateString(
+                        FindProfileForCreateWbQuestionSchedule::INTERVAL
+                    )
+                );
 
                 return $content;
             });

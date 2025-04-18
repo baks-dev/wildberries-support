@@ -33,6 +33,7 @@ use BaksDev\Support\Type\Status\SupportStatus\Collection\SupportStatusClose;
 use BaksDev\Support\UseCase\Admin\New\Message\SupportMessageDTO;
 use BaksDev\Support\UseCase\Admin\New\SupportDTO;
 use BaksDev\Wildberries\Support\Api\Review\ReplyToReview\PostWbReplyToReviewRequest;
+use BaksDev\Wildberries\Support\Type\WbReviewProfileType;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -46,8 +47,7 @@ final readonly class SendWbReplyToReviewHandler
         private MessageDispatchInterface $messageDispatch,
         private CurrentSupportEventRepository $currentSupportEvent,
         private PostWbReplyToReviewRequest $sendMessageRequest,
-    )
-    {}
+    ) {}
 
     /**
      * При ответе на пользовательские сообщения:
@@ -59,13 +59,11 @@ final readonly class SendWbReplyToReviewHandler
 
     public function __invoke(SupportMessage $message): void
     {
-        $supportDTO = new SupportDTO();
-
-        $supportEvent = $this->currentSupportEvent
+        $SupportEvent = $this->currentSupportEvent
             ->forSupport($message->getId())
             ->find();
 
-        if(false === $supportEvent)
+        if(false === $SupportEvent)
         {
             $this->logger->critical(
                 'Ошибка получения события по идентификатору :'.$message->getId(),
@@ -75,61 +73,69 @@ final readonly class SendWbReplyToReviewHandler
             return;
         }
 
-        $supportEvent->getDto($supportDTO);
 
-        $SupportInvariableDTO = $supportDTO->getInvariable();
+        $SupportDTO = $SupportEvent->getDto(SupportDTO::class);
+        $SupportInvariableDTO = $SupportDTO->getInvariable();
 
         if(is_null($SupportInvariableDTO))
         {
             return;
         }
 
-        // проверяем тип профиля
-        $typeProfile = $SupportInvariableDTO->getType();
-
-        if(false === (bool) $typeProfile->getTypeProfileValue())
+        /**
+         * Ответ только на закрытый тикет
+         */
+        if(false === $SupportDTO->getStatus()->equals(SupportStatusClose::class))
         {
             return;
         }
 
-        // ответы закрывают чат - реагируем на статус SupportStatusClose
-        if($supportDTO->getStatus()->getSupportStatus() instanceof SupportStatusClose)
+        /**
+         * Пропускаем если тикет не является Wildberries Support Review «Отзыв»
+         */
+        $typeProfile = $SupportInvariableDTO->getType();
+
+        if(false === $typeProfile->equals(WbReviewProfileType::TYPE))
         {
-            /** @var SupportMessageDTO $lastMessage */
-            $lastMessage = $supportDTO->getMessages()->last();
-
-            // проверяем наличие внешнего ID - для наших ответов его быть не должно
-            if(null !== $lastMessage->getExternal())
-            {
-                return;
-            }
-
-            $lastMessageText = $lastMessage->getMessage();
-
-            $UserProfileUid = $SupportInvariableDTO->getProfile();
-            $externalChatId = $SupportInvariableDTO->getTicket();
-
-            $result = $this->sendMessageRequest
-                ->profile($UserProfileUid)
-                ->chatId($externalChatId)
-                ->message($lastMessageText)
-                ->sendMessage();
-
-            if(false === $result)
-            {
-                $this->logger->warning(
-                    'Повтор выполнения сообщения через 1 минут',
-                    [self::class.':'.__LINE__],
-                );
-
-                $this->messageDispatch
-                    ->dispatch(
-                        message: $message,
-                        // задержка 1 минуту для отправки сообщение в существующий чат по его идентификатору
-                        stamps: [new MessageDelay('1 minutes')],
-                        transport: 'wildberries-support',
-                    );
-            }
+            return;
         }
+
+
+        /** @var SupportMessageDTO $lastMessage */
+        $lastMessage = $SupportDTO->getMessages()->last();
+
+        // проверяем наличие внешнего ID - для наших ответов его быть не должно
+        if(null !== $lastMessage->getExternal())
+        {
+            return;
+        }
+
+        $lastMessageText = $lastMessage->getMessage();
+
+        $UserProfileUid = $SupportInvariableDTO->getProfile();
+        $externalChatId = $SupportInvariableDTO->getTicket();
+
+        $result = $this->sendMessageRequest
+            ->profile($UserProfileUid)
+            ->chatId($externalChatId)
+            ->message($lastMessageText)
+            ->sendMessage();
+
+        if(false === $result)
+        {
+            $this->logger->warning(
+                'Повтор выполнения сообщения через 1 минут',
+                [self::class.':'.__LINE__],
+            );
+
+            $this->messageDispatch
+                ->dispatch(
+                    message: $message,
+                    // задержка 1 минуту для отправки сообщение в существующий чат по его идентификатору
+                    stamps: [new MessageDelay('1 minutes')],
+                    transport: 'wildberries-support',
+                );
+        }
+
     }
 }

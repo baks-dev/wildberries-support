@@ -58,13 +58,12 @@ final readonly class SendWbReplyToQuestionHandler
 
     public function __invoke(SupportMessage $message): void
     {
-        $supportDTO = new SupportDTO();
 
-        $supportEvent = $this->currentSupportEvent
+        $SupportEvent = $this->currentSupportEvent
             ->forSupport($message->getId())
             ->find();
 
-        if(false === $supportEvent)
+        if(false === $SupportEvent)
         {
             $this->logger->critical(
                 'Ошибка получения события по идентификатору :'.$message->getId(),
@@ -74,9 +73,8 @@ final readonly class SendWbReplyToQuestionHandler
             return;
         }
 
-        $supportEvent->getDto($supportDTO);
-
-        $SupportInvariableDTO = $supportDTO->getInvariable();
+        $SupportDTO = $SupportEvent->getDto(SupportDTO::class);
+        $SupportInvariableDTO = $SupportDTO->getInvariable();
 
         if(is_null($SupportInvariableDTO))
         {
@@ -84,7 +82,15 @@ final readonly class SendWbReplyToQuestionHandler
         }
 
         /**
-         * Пропускаем если тикет не является Support Question «Вопрос»
+         * Ответ только на закрытый тикет
+         */
+        if(false === $SupportDTO->getStatus()->equals(SupportStatusClose::class))
+        {
+            return;
+        }
+
+        /**
+         * Пропускаем если тикет не является Wildberries Support Question «Вопрос»
          */
         $typeProfile = $SupportInvariableDTO->getType();
 
@@ -94,19 +100,11 @@ final readonly class SendWbReplyToQuestionHandler
         }
 
         /**
-         * Ответ только на закрытый тикет
-         */
-        if(false === ($supportDTO->getStatus()->getSupportStatus() instanceof SupportStatusClose))
-        {
-            return;
-        }
-
-        /**
          * Первое сообщение, содержащее идентификатор вопроса
          * @var SupportMessageDTO $firstMessage
          */
 
-        $firstMessage = $supportDTO->getMessages()->first();
+        $firstMessage = $SupportDTO->getMessages()->first();
 
         // Первый элемент имеет id вопроса для ответа
         if(is_null($firstMessage->getExternal()))
@@ -119,7 +117,7 @@ final readonly class SendWbReplyToQuestionHandler
          * @var SupportMessageDTO $lastMessage
          */
 
-        $lastMessage = $supportDTO->getMessages()->last();
+        $lastMessage = $SupportDTO->getMessages()->last();
 
         $ticket = $SupportInvariableDTO->getTicket();
 
