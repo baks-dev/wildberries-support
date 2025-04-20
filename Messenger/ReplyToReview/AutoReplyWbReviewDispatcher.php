@@ -135,7 +135,7 @@ final readonly class AutoReplyWbReviewDispatcher
             ->setOutMessage();
 
         $supportDTO
-            ->setStatus(new SupportStatus(SupportStatusClose::PARAM)) // закрываем чат
+            ->setStatus(new SupportStatus(SupportStatusClose::class)) // закрываем чат
             ->addMessage($supportMessageDTO) // добавляем сформированное сообщение
         ;
 

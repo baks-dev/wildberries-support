@@ -26,6 +26,7 @@ declare(strict_types=1);
 namespace BaksDev\Wildberries\Support\Messenger\Schedules\GetWbReviews;
 
 use BaksDev\Core\Deduplicator\DeduplicatorInterface;
+use BaksDev\Core\Messenger\MessageDelay;
 use BaksDev\Core\Messenger\MessageDispatch;
 use BaksDev\Support\Entity\Event\SupportEvent;
 use BaksDev\Support\Entity\Support;
@@ -59,9 +60,6 @@ final class GetWbReviewsDispatcher
 {
     private bool $isAddMessage = false;
 
-    /** За какое количество времени (в сек) запрашивать сообщения по API */
-    const int ITERATION_TIMESTAMP = 60;
-
     public function __construct(
         #[Target('wildberriesSupportLogger')] private readonly LoggerInterface $logger,
         private readonly DeduplicatorInterface $deduplicator,
@@ -80,14 +78,8 @@ final class GetWbReviewsDispatcher
         if(false === $message->getAddAll())
         {
             $DateTimeFrom = new DateTimeImmutable()
-                ->setTimezone(new DateTimeZone('GMT'))
-
-                // периодичность scheduler
-                ->sub(DateInterval::createFromDateString(FindProfileForCreateWbReviewSchedule::INTERVAL))
-
-                // 1 минута запас на runtime
-                ->sub(DateInterval::createFromDateString('1 minute'))
-
+                ->setTimezone(new DateTimeZone('UTC'))
+                ->sub(DateInterval::createFromDateString('1 day'))
                 ->getTimestamp();
 
             $this->GetWbReviewsListRequest->from($DateTimeFrom);
@@ -121,7 +113,8 @@ final class GetWbReviewsDispatcher
                 return;
             }
 
-            if ($review->getData() === '') {
+            if($review->getData() === '')
+            {
                 continue;
             }
 
@@ -169,7 +162,7 @@ final class GetWbReviewsDispatcher
             $this->isAddMessage ?: $this->isAddMessage = true;
 
             /** Сохраняем, если имеются новые сообщения в массиве */
-            if (true === $this->isAddMessage)
+            if(true === $this->isAddMessage)
             {
                 $handle = $this->supportHandler->handle($supportDTO);
 
@@ -184,6 +177,8 @@ final class GetWbReviewsDispatcher
                         ],
                     );
                 }
+
+                $Deduplicator->save();
             }
 
             // после добавления отзыва в БД - инициирую авто ответ по условию
@@ -205,21 +200,13 @@ final class GetWbReviewsDispatcher
 
             if($reviewRating === 5 || empty($review->getIsText()))
             {
-                /**
-                 * Максимум 1 запрос в секунду
-                 * @see https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Otzyvy/paths/~1api~1v1~1feedbacks~1answer/post
-                 */
-
-                sleep(1);
-
                 /** @var Support $handle */
                 $this->messageDispatch->dispatch(
                     message: new AutoReplyWbReviewMessage($handle->getId(), $reviewRating),
+                    stamps: [new MessageDelay(FindProfileForCreateWbReviewSchedule::INTERVAL)],
                     transport: 'wildberries-support',
                 );
             }
         }
-
-        $Deduplicator->save();
     }
 }
