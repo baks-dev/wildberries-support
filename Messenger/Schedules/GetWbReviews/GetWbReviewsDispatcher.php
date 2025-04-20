@@ -30,6 +30,8 @@ use BaksDev\Core\Messenger\MessageDelay;
 use BaksDev\Core\Messenger\MessageDispatch;
 use BaksDev\Support\Entity\Event\SupportEvent;
 use BaksDev\Support\Entity\Support;
+use BaksDev\Support\Repository\ExistTicket\ExistSupportTicketInterface;
+use BaksDev\Support\Repository\FindExistMessage\FindExistExternalMessageByIdInterface;
 use BaksDev\Support\Repository\SupportCurrentEventByTicket\CurrentSupportEventByTicketInterface;
 use BaksDev\Support\Type\Priority\SupportPriority;
 use BaksDev\Support\Type\Priority\SupportPriority\Collection\SupportPriorityLow;
@@ -45,9 +47,6 @@ use BaksDev\Wildberries\Support\Api\Review\ReviewsList\WbReviewMessageDTO;
 use BaksDev\Wildberries\Support\Messenger\ReplyToReview\AutoReplyWbReviewMessage;
 use BaksDev\Wildberries\Support\Schedule\WbNewReview\FindProfileForCreateWbReviewSchedule;
 use BaksDev\Wildberries\Support\Type\WbReviewProfileType;
-use DateInterval;
-use DateTimeImmutable;
-use DateTimeZone;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -65,26 +64,13 @@ final class GetWbReviewsDispatcher
         private readonly DeduplicatorInterface $deduplicator,
         private readonly GetWbReviewsListRequest $GetWbReviewsListRequest,
         private readonly CurrentSupportEventByTicketInterface $supportByWbChat,
+        private readonly ExistSupportTicketInterface $ExistSupportTicket,
         private readonly SupportHandler $supportHandler,
         private readonly MessageDispatch $messageDispatch,
     ) {}
 
     public function __invoke(GetWbReviewsMessage $message): void
     {
-        /**
-         * Ограничиваем лимит сообщений по дате, если вызван диспетчер не из консольной комманды
-         * @see UpdateWbReviewCommand
-         */
-        if(false === $message->getAddAll())
-        {
-            $DateTimeFrom = new DateTimeImmutable()
-                ->setTimezone(new DateTimeZone('UTC'))
-                ->sub(DateInterval::createFromDateString('1 day'))
-                ->getTimestamp();
-
-            $this->GetWbReviewsListRequest->from($DateTimeFrom);
-        }
-
         $UserProfileUid = $message->getProfile();
 
         /**
@@ -113,12 +99,25 @@ final class GetWbReviewsDispatcher
                 return;
             }
 
-            if($review->getData() === '')
+            if(empty($review->getData()))
             {
                 continue;
             }
 
             $ticket = $review->getId();
+
+            /**
+             * Пропускаем, если указанный тикет добавлен
+             * @see ExistSupportTicketInterface
+             */
+            $questionExist = $this->ExistSupportTicket
+                ->ticket($ticket)
+                ->exist();
+
+            if($questionExist)
+            {
+                continue;
+            }
 
             /** SupportEvent */
             $supportDTO = new SupportDTO();
@@ -136,7 +135,7 @@ final class GetWbReviewsDispatcher
                 ->forTicket($ticket)
                 ->find();
 
-            /** Пересохраняю событие с новыми данными */
+            /** Пересохраняем событие с новыми данными */
             !($support instanceof SupportEvent) ?: $support->getDto($supportDTO);
 
             /** Устанавливаем заголовок чата - выполнится только один раз при сохранении чата */
@@ -161,25 +160,31 @@ final class GetWbReviewsDispatcher
 
             $this->isAddMessage ?: $this->isAddMessage = true;
 
-            /** Сохраняем, если имеются новые сообщения в массиве */
             if(true === $this->isAddMessage)
             {
-                $handle = $this->supportHandler->handle($supportDTO);
-
-                if(false === $handle instanceof Support)
-                {
-                    $this->logger->critical(
-                        sprintf('wildberries-support: Ошибка %s при создании/обновлении отзывов', $handle),
-                        [
-                            self::class.':'.__LINE__,
-                            $UserProfileUid,
-                            $supportDTO->getInvariable()?->getTicket(),
-                        ],
-                    );
-                }
-
-                $Deduplicator->save();
+                continue;
             }
+
+            /** Сохраняем, если имеются новые сообщения в массиве */
+
+            $handle = $this->supportHandler->handle($supportDTO);
+
+            if(false === $handle instanceof Support)
+            {
+                $this->logger->critical(
+                    sprintf('wildberries-support: Ошибка %s при создании/обновлении отзывов', $handle),
+                    [
+                        self::class.':'.__LINE__,
+                        $UserProfileUid,
+                        $supportDTO->getInvariable()?->getTicket(),
+                    ],
+                );
+
+                continue;
+            }
+
+            $Deduplicator->save();
+
 
             // после добавления отзыва в БД - инициирую авто ответ по условию
 
