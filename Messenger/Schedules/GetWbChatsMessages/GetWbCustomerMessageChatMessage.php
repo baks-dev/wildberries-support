@@ -34,24 +34,19 @@ final class GetWbCustomerMessageChatMessage
     /**
      * Идентификатор профиля пользователя
      */
-    private UserProfileUid $profile;
+    private string $profile;
 
     /** Нужно ли получить все сообщения */
     private bool $addAll = false;
 
     public function __construct(UserProfileUid|string $profile)
     {
-        if(is_string($profile))
-        {
-            $profile = new UserProfileUid($profile);
-        }
-
-        $this->profile = $profile;
+        $this->profile = (string) $profile;
     }
 
     public function getProfile(): UserProfileUid
     {
-        return $this->profile;
+        return new UserProfileUid($this->profile);
     }
 
     public function addAll(): self

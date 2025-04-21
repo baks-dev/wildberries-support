@@ -29,4 +29,5 @@ use Symfony\Component\DependencyInjection\Attribute\Exclude;
 
 #[Exclude]
 class FindProfileForCreateWbSupportMessage
-{}
+{
+}

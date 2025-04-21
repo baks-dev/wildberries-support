@@ -38,7 +38,6 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-
 #[AsMessageHandler]
 final readonly class SendWbReplyToReviewHandler
 {

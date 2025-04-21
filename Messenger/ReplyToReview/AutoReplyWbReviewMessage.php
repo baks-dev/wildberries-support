@@ -31,15 +31,23 @@ use Symfony\Component\DependencyInjection\Attribute\Exclude;
 #[Exclude]
 final readonly class AutoReplyWbReviewMessage
 {
+    private string $id;
+
+    private int $rating;
+
     public function __construct(
-        private SupportUid $id,
-        private int $rating,
-    ) {}
+        SupportUid $id,
+        int $rating,
+    )
+    {
+        $this->id = (string) $id;
+        $this->rating = $rating;
+    }
 
     /** Идентификатор main */
     public function getId(): SupportUid
     {
-        return $this->id;
+        return new SupportUid($this->id);
     }
 
     /** Рейтинг отзыва */

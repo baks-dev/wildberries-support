@@ -25,8 +25,10 @@ declare(strict_types=1);
 
 namespace BaksDev\Wildberries\Support\Messenger\ReplyToReview;
 
+use BaksDev\Core\Deduplicator\DeduplicatorInterface;
 use BaksDev\Support\Answer\Service\AutoMessagesReply;
 use BaksDev\Support\Entity\Support;
+use BaksDev\Support\Repository\SupportCurrentEvent\CurrentSupportEventInterface;
 use BaksDev\Support\Repository\SupportCurrentEvent\CurrentSupportEventRepository;
 use BaksDev\Support\Type\Status\SupportStatus;
 use BaksDev\Support\Type\Status\SupportStatus\Collection\SupportStatusClose;
@@ -46,15 +48,24 @@ final readonly class AutoReplyWbReviewDispatcher
 {
     public function __construct(
         #[Target('wildberriesSupportLogger')] private LoggerInterface $logger,
+        private CurrentSupportEventInterface $CurrentSupportEventRepository,
         private SupportHandler $supportHandler,
-        private CurrentSupportEventRepository $currentSupportEvent,
+        private DeduplicatorInterface $deduplicator
     ) {}
 
     public function __invoke(AutoReplyWbReviewMessage $message): void
     {
-        $supportDTO = new SupportDTO();
 
-        $supportEvent = $this->currentSupportEvent
+        $DeduplicatorExecuted = $this->deduplicator
+            ->namespace('wildberries-support')
+            ->deduplication([$message->getId(), self::class]);
+
+        if($DeduplicatorExecuted->isExecuted())
+        {
+            return;
+        }
+
+        $supportEvent = $this->CurrentSupportEventRepository
             ->forSupport($message->getId())
             ->find();
 
@@ -69,6 +80,7 @@ final readonly class AutoReplyWbReviewDispatcher
         }
 
         // гидрируем DTO активным событием
+        $supportDTO = new SupportDTO();
         $supportEvent->getDto($supportDTO);
 
         // обрабатываем только на открытый тикет
@@ -148,6 +160,15 @@ final readonly class AutoReplyWbReviewDispatcher
                 'wildberries-support: Ошибка при отправке автоматического ответа на отзыв',
                 [$Support, self::class.':'.__LINE__]
             );
+
+            return;
         }
+
+        $this->logger->info(
+            'Отправили автоматический ответ на отзыв',
+            [$Support, self::class.':'.__LINE__]
+        );
+
+        $DeduplicatorExecuted->save();
     }
 }
