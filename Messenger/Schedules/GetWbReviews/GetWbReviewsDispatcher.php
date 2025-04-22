@@ -57,8 +57,6 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 #[AsMessageHandler(priority: 0)]
 final class GetWbReviewsDispatcher
 {
-    private bool $isAddMessage = false;
-
     public function __construct(
         #[Target('wildberriesSupportLogger')] private readonly LoggerInterface $logger,
         private readonly DeduplicatorInterface $deduplicator,
@@ -158,12 +156,6 @@ final class GetWbReviewsDispatcher
 
             $supportDTO->addMessage($supportMessageDTO);
 
-            $this->isAddMessage ?: $this->isAddMessage = true;
-
-            if(true === $this->isAddMessage)
-            {
-                continue;
-            }
 
             /** Сохраняем, если имеются новые сообщения в массиве */
 
