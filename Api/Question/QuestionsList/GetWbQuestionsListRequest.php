@@ -90,7 +90,7 @@ final class GetWbQuestionsListRequest extends Wildberries
                 if($response->getStatusCode() !== 200)
                 {
                     $this->logger->critical(
-                        sprintf('wildberries-support: Ошибка получения списка вопросов'),
+                        sprintf('wildberries-support: Ошибка %s получения списка вопросов', $response->getStatusCode()),
                         [
                             self::class.':'.__LINE__,
                             $content
