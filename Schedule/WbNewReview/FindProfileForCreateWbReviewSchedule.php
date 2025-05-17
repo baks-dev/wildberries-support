@@ -25,13 +25,13 @@ declare(strict_types=1);
 
 namespace BaksDev\Wildberries\Support\Schedule\WbNewReview;
 
-use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 use DateInterval;
+use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 #[AutoconfigureTag('baks.schedule')]
 final class FindProfileForCreateWbReviewSchedule
 {
-    const string INTERVAL = '1 minutes';
+    const string INTERVAL = '5 minutes';
 
     /** Возвращает экземпляр класса сообщения */
     public function getMessage(): object
