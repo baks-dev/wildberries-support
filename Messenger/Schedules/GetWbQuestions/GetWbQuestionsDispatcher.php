@@ -74,6 +74,7 @@ final class GetWbQuestionsDispatcher
     {
         /**
          * Ограничиваем лимит сообщений по дате, если вызван диспетчер не из консольной комманды
+         *
          * @see UpdateWbQuestionCommand
          */
         if(false === $message->getAddAll())
@@ -86,7 +87,6 @@ final class GetWbQuestionsDispatcher
 
                 // 1 минута запас на runtime
                 ->sub(DateInterval::createFromDateString('1 minute'))
-
                 ->getTimestamp();
 
             $this->GetWbQuestionsListRequest->from($DateTimeFrom);
@@ -96,6 +96,7 @@ final class GetWbQuestionsDispatcher
 
         /**
          * Получаем новые вопросы
+         *
          * @see GetWbQuestionsListRequest
          */
         $questions = $this->GetWbQuestionsListRequest
@@ -119,22 +120,26 @@ final class GetWbQuestionsDispatcher
                 return;
             }
 
-            if ($question->getData() === '') {
+            if($question->getData() === '')
+            {
                 continue;
             }
 
             $ticket = $question->getId();
 
             /** SupportEvent */
-            $supportDTO = new SupportDTO();
-            $supportDTO->setPriority(new SupportPriority(SupportPriorityLow::class));
-            $supportDTO->setStatus(new SupportStatus(SupportStatusOpen::class));
+            $supportDTO = new SupportDTO() // done
+            ->setPriority(new SupportPriority(SupportPriorityLow::class))
+                ->setStatus(new SupportStatus(SupportStatusOpen::class));
+
+            /** Присваиваем токен для последующего поиска */
+            $supportDTO->getToken()->setValue($message->getProfile());
 
             /** SupportInvariable */
-            $supportInvariableDTO = new SupportInvariableDTO();
-            $supportInvariableDTO->setProfile($UserProfileUid);
-            $supportInvariableDTO->setType(new TypeProfileUid(WbQuestionProfileType::TYPE));
-            $supportInvariableDTO->setTicket($ticket);
+            $supportInvariableDTO = new SupportInvariableDTO()
+                ->setProfile($UserProfileUid)
+                ->setType(new TypeProfileUid(WbQuestionProfileType::TYPE))
+                ->setTicket($ticket);
 
             // текущее событие тикета по идентификатору тикета из Wb
             $support = $this->supportByWbChat
@@ -142,7 +147,7 @@ final class GetWbQuestionsDispatcher
                 ->find();
 
             /** Пересохраняю событие с новыми данными */
-            !($support instanceof SupportEvent) ?: $support->getDto($supportDTO);
+            false === ($support instanceof SupportEvent) ?: $support->getDto($supportDTO);
 
             /** Устанавливаем заголовок чата - выполнится только один раз при сохранении чата */
             if(false === $support)
@@ -153,13 +158,12 @@ final class GetWbQuestionsDispatcher
             $supportDTO->setInvariable($supportInvariableDTO);
 
             // подготовка DTO для нового сообщения
-            $supportMessageDTO = new SupportMessageDTO();
-            $supportMessageDTO->setMessage($question->getData());
-            $supportMessageDTO->setDate($question->getCreated());
-            $supportMessageDTO->setExternal($question->getId()); // идентификатор сообщения в WB
-            $supportMessageDTO->setInMessage();
-
-            $supportMessageDTO->setName($this->translator->trans('user', domain: 'support.admin', locale: $this->translator->getLocale()));
+            $supportMessageDTO = new SupportMessageDTO()
+                ->setMessage($question->getData())
+                ->setDate($question->getCreated())
+                ->setExternal($question->getId()) // идентификатор сообщения в WB
+                ->setName($this->translator->trans('user', domain: 'support.admin', locale: $this->translator->getLocale()))
+                ->setInMessage();
 
             $supportDTO->setStatus(new SupportStatus(SupportStatusOpen::class));
             $supportDTO->addMessage($supportMessageDTO);
@@ -172,7 +176,7 @@ final class GetWbQuestionsDispatcher
                 ->send();
 
             /** Сохраняем, если имеются новые сообщения в массиве */
-            if (true === $this->isAddMessage)
+            if(true === $this->isAddMessage)
             {
                 $handle = $this->supportHandler->handle($supportDTO);
 

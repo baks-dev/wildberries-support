@@ -69,6 +69,7 @@ final class GetWbCustomerMessageChatDispatcher
     {
         /**
          * Ограничиваем лимит сообщений по дате, если вызван диспетчер не из консольной комманды
+         *
          * @see UpdateWbChatCommand
          */
         if($message->getAddAll() === false)
@@ -81,7 +82,6 @@ final class GetWbCustomerMessageChatDispatcher
 
                 // 1 минута запас на runtime
                 ->sub(DateInterval::createFromDateString('1 minute'))
-
                 ->getTimestamp();
 
             $DateTimeFrom *= 1000; // Приводим к миллисекундам согласно документации WBApi
@@ -120,10 +120,12 @@ final class GetWbCustomerMessageChatDispatcher
             $ticket = $chatMessage->getChatId();
 
             /** SupportEvent */
-            $supportDTO = new SupportDTO();
-            $supportDTO->setPriority(new SupportPriority(SupportPriorityLow::class));
-            $supportDTO->setStatus(new SupportStatus(SupportStatusOpen::class));
+            $supportDTO = new SupportDTO() // done
+            ->setPriority(new SupportPriority(SupportPriorityLow::class))
+                ->setStatus(new SupportStatus(SupportStatusOpen::class));
 
+            /** Присваиваем токен для последующего поиска */
+            $supportDTO->getToken()->setValue($message->getProfile());
             /** SupportInvariable */
             $supportInvariableDTO = new SupportInvariableDTO();
             $supportInvariableDTO->setProfile($UserProfileUid);

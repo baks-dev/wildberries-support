@@ -80,8 +80,7 @@ final readonly class AutoReplyWbReviewDispatcher
         }
 
         // гидрируем DTO активным событием
-        $supportDTO = new SupportDTO();
-        $supportEvent->getDto($supportDTO);
+        $supportDTO = $supportEvent->getDto(SupportDTO::class);
 
         // обрабатываем только на открытый тикет
         if(false === ($supportDTO->getStatus()->getSupportStatus() instanceof SupportStatusOpen))

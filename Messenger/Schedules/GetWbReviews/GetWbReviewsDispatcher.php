@@ -73,6 +73,7 @@ final class GetWbReviewsDispatcher
 
         /**
          * Получаем новые отзывы
+         *
          * @see GetWbReviewsListRequest
          */
 
@@ -106,6 +107,7 @@ final class GetWbReviewsDispatcher
 
             /**
              * Пропускаем, если указанный тикет добавлен
+             *
              * @see ExistSupportTicketInterface
              */
             $questionExist = $this->ExistSupportTicket
@@ -118,15 +120,19 @@ final class GetWbReviewsDispatcher
             }
 
             /** SupportEvent */
-            $supportDTO = new SupportDTO();
-            $supportDTO->setPriority(new SupportPriority(SupportPriorityLow::class));
-            $supportDTO->setStatus(new SupportStatus(SupportStatusOpen::class));
+            $SupportDTO = new SupportDTO() // done
+            ->setPriority(new SupportPriority(SupportPriorityLow::class))
+                ->setStatus(new SupportStatus(SupportStatusOpen::class));
+
+            /** Присваиваем токен для последующего поиска */
+            $SupportDTO->getToken()->setValue($message->getProfile());
+
 
             /** SupportInvariable */
-            $supportInvariableDTO = new SupportInvariableDTO();
-            $supportInvariableDTO->setProfile($UserProfileUid);
-            $supportInvariableDTO->setType(new TypeProfileUid(WbReviewProfileType::TYPE));
-            $supportInvariableDTO->setTicket($ticket);
+            $supportInvariableDTO = new SupportInvariableDTO()
+                ->setProfile($UserProfileUid)
+                ->setType(new TypeProfileUid(WbReviewProfileType::TYPE))
+                ->setTicket($ticket);
 
             // текущее событие тикета по идентификатору тикета из Wb
             $support = $this->supportByWbChat
@@ -134,7 +140,7 @@ final class GetWbReviewsDispatcher
                 ->find();
 
             /** Пересохраняем событие с новыми данными */
-            !($support instanceof SupportEvent) ?: $support->getDto($supportDTO);
+            !($support instanceof SupportEvent) ?: $support->getDto($SupportDTO);
 
             /** Устанавливаем заголовок чата - выполнится только один раз при сохранении чата */
             if(false === $support)
@@ -142,24 +148,24 @@ final class GetWbReviewsDispatcher
                 $supportInvariableDTO->setTitle($review->getTitle());
             }
 
-            $supportDTO->setInvariable($supportInvariableDTO);
 
             // подготовка DTO для нового сообщения
-            $supportMessageDTO = new SupportMessageDTO();
+            $supportMessageDTO = new SupportMessageDTO()
+                ->setMessage($review->getData())
+                ->setDate($review->getCreated())
+                ->setExternal($review->getId()) // идентификатор сообщения в WB
+                ->setName($review->getName())
+                ->setInMessage();
 
-            $supportMessageDTO->setMessage($review->getData());
-            $supportMessageDTO->setDate($review->getCreated());
-            $supportMessageDTO->setExternal($review->getId()); // идентификатор сообщения в WB
-            $supportMessageDTO->setInMessage();
-            $supportMessageDTO->setName($review->getName());
-            $supportDTO->setStatus(new SupportStatus(SupportStatusOpen::class));
-
-            $supportDTO->addMessage($supportMessageDTO);
+            $SupportDTO
+                ->setStatus(new SupportStatus(SupportStatusOpen::class))
+                ->setInvariable($supportInvariableDTO)
+                ->addMessage($supportMessageDTO);
 
 
             /** Сохраняем, если имеются новые сообщения в массиве */
 
-            $handle = $this->supportHandler->handle($supportDTO);
+            $handle = $this->supportHandler->handle($SupportDTO);
 
             if(false === $handle instanceof Support)
             {
@@ -168,7 +174,7 @@ final class GetWbReviewsDispatcher
                     [
                         self::class.':'.__LINE__,
                         $UserProfileUid,
-                        $supportDTO->getInvariable()?->getTicket(),
+                        $SupportDTO->getInvariable()?->getTicket(),
                     ],
                 );
 
