@@ -25,17 +25,15 @@ declare(strict_types=1);
 
 namespace BaksDev\Wildberries\Support\Api\Review\ReviewsList\Tests;
 
+use BaksDev\Users\Profile\UserProfile\Type\Id\UserProfileUid;
 use BaksDev\Wildberries\Support\Api\Review\ReviewsList\GetWbReviewsListRequest;
 use BaksDev\Wildberries\Type\Authorization\WbAuthorizationToken;
-use BaksDev\Users\Profile\UserProfile\Type\Id\UserProfileUid;
+use PHPUnit\Framework\Attributes\Group;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\DependencyInjection\Attribute\When;
 
-/**
- * @group wildberries-support
- * @group wildberries-support-api
- */
 #[When(env: 'test')]
+#[Group('wildberries-support')]
 final class GetWbReviewsListRequestTest extends KernelTestCase
 {
     private static WbAuthorizationToken $authorization;

@@ -28,14 +28,12 @@ namespace BaksDev\Wildberries\Support\Api\Chat\ChatsMessages\Tests;
 use BaksDev\Users\Profile\UserProfile\Type\Id\UserProfileUid;
 use BaksDev\Wildberries\Support\Api\Chat\ChatsMessages\GetWbChatsMessagesRequest;
 use BaksDev\Wildberries\Type\Authorization\WbAuthorizationToken;
+use PHPUnit\Framework\Attributes\Group;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\DependencyInjection\Attribute\When;
 
-/**
- * @group wildberries-support
- * @group wildberries-support-api
- */
 #[When(env: 'test')]
+#[Group('wildberries-support')]
 final class GetWbChatsMessagesRequestTest extends KernelTestCase
 {
     private static WbAuthorizationToken $authorization;
