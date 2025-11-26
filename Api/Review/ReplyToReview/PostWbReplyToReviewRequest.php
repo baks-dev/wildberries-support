@@ -66,8 +66,6 @@ final class PostWbReplyToReviewRequest extends Wildberries
             return false;
         }
 
-        $url = 'api/v1/feedbacks/answer';
-
         $json = [
             "id" => $this->chatId,
             "text" => $this->message,
@@ -78,7 +76,7 @@ final class PostWbReplyToReviewRequest extends Wildberries
             ->TokenHttpClient()
             ->request(
                 method: 'POST',
-                url: $url,
+                url: 'api/v1/feedbacks/answer',
                 options: ["json" => $json]
             );
 

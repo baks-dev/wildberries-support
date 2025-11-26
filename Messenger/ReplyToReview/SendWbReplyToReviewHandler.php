@@ -27,9 +27,11 @@ namespace BaksDev\Wildberries\Support\Messenger\ReplyToReview;
 
 use BaksDev\Core\Messenger\MessageDelay;
 use BaksDev\Core\Messenger\MessageDispatchInterface;
+use BaksDev\Support\Entity\Event\SupportEvent;
 use BaksDev\Support\Messenger\SupportMessage;
 use BaksDev\Support\Repository\SupportCurrentEvent\CurrentSupportEventRepository;
 use BaksDev\Support\Type\Status\SupportStatus\Collection\SupportStatusClose;
+use BaksDev\Support\UseCase\Admin\New\Invariable\SupportInvariableDTO;
 use BaksDev\Support\UseCase\Admin\New\Message\SupportMessageDTO;
 use BaksDev\Support\UseCase\Admin\New\SupportDTO;
 use BaksDev\Wildberries\Support\Api\Review\ReplyToReview\PostWbReplyToReviewRequest;
@@ -62,7 +64,7 @@ final readonly class SendWbReplyToReviewHandler
             ->forSupport($message->getId())
             ->find();
 
-        if(false === $SupportEvent)
+        if(false === ($SupportEvent instanceof SupportEvent))
         {
             $this->logger->critical(
                 'Ошибка получения события по идентификатору :'.$message->getId(),
@@ -72,20 +74,25 @@ final readonly class SendWbReplyToReviewHandler
             return;
         }
 
-
-        $SupportDTO = $SupportEvent->getDto(SupportDTO::class);
-        $SupportInvariableDTO = $SupportDTO->getInvariable();
-
-        if(is_null($SupportInvariableDTO))
-        {
-            return;
-        }
-
         /**
          * Ответ только на закрытый тикет
          */
-        if(false === $SupportDTO->getStatus()->equals(SupportStatusClose::class))
+        if(false === ($SupportEvent->isStatusEquals(SupportStatusClose::class)))
         {
+            $this->logger->debug(sprintf('Тикет %s не получил ответ на отзыв', $SupportEvent->getId()));
+
+            return;
+        }
+
+
+        /** @var SupportDTO $SupportDTO */
+        $SupportDTO = $SupportEvent->getDto(SupportDTO::class);
+        $SupportInvariableDTO = $SupportDTO->getInvariable();
+
+        if(false === ($SupportInvariableDTO instanceof SupportInvariableDTO))
+        {
+            $this->logger->warning(sprintf('Support Invariable Тикет %s не определен', $SupportEvent->getId()));
+
             return;
         }
 

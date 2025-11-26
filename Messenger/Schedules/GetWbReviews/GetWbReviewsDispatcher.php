@@ -55,16 +55,16 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * Получает новые вопросы WB
  */
 #[AsMessageHandler(priority: 0)]
-final class GetWbReviewsDispatcher
+final readonly class GetWbReviewsDispatcher
 {
     public function __construct(
-        #[Target('wildberriesSupportLogger')] private readonly LoggerInterface $logger,
-        private readonly DeduplicatorInterface $deduplicator,
-        private readonly GetWbReviewsListRequest $GetWbReviewsListRequest,
-        private readonly CurrentSupportEventByTicketInterface $supportByWbChat,
-        private readonly ExistSupportTicketInterface $ExistSupportTicket,
-        private readonly SupportHandler $supportHandler,
-        private readonly MessageDispatch $messageDispatch,
+        #[Target('wildberriesSupportLogger')] private LoggerInterface $logger,
+        private DeduplicatorInterface $deduplicator,
+        private GetWbReviewsListRequest $GetWbReviewsListRequest,
+        private CurrentSupportEventByTicketInterface $supportByWbChat,
+        private ExistSupportTicketInterface $ExistSupportTicket,
+        private SupportHandler $supportHandler,
+        private MessageDispatch $messageDispatch,
     ) {}
 
     public function __invoke(GetWbReviewsMessage $message): void
@@ -91,6 +91,7 @@ final class GetWbReviewsDispatcher
         {
             $Deduplicator = $this->deduplicator
                 ->namespace('wildberries-support')
+                ->expiresAfter('1 hour')
                 ->deduplication([$review->getId(), self::class]);
 
             if($Deduplicator->isExecuted())

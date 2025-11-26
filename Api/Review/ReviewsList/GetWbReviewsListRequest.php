@@ -69,7 +69,6 @@ final class GetWbReviewsListRequest extends Wildberries
                 $query['dateFrom'] = $this->from;
             }
 
-
             $response = $this
                 ->feedbacks()
                 ->TokenHttpClient()
@@ -109,6 +108,8 @@ final class GetWbReviewsListRequest extends Wildberries
             }
 
             $skip += self::LIMIT;
+
+            usleep(400000);
         }
     }
 }

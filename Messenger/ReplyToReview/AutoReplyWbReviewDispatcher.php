@@ -140,7 +140,7 @@ final readonly class AutoReplyWbReviewDispatcher
         /** Отправляем сообщение клиенту */
 
         $supportMessageDTO = new SupportMessageDTO()
-            ->setName('admin (WB Seller)')
+            ->setName('auto (Bot Seller)')
             ->setMessage($answerMessage)
             ->setDate(new DateTimeImmutable('now'))
             ->setOutMessage();
