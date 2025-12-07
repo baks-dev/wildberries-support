@@ -28,7 +28,7 @@ namespace BaksDev\Wildberries\Support\Schedule\WbNewReview;
 use BaksDev\Core\Messenger\MessageDelay;
 use BaksDev\Core\Messenger\MessageDispatchInterface;
 use BaksDev\Users\Profile\UserProfile\Type\Id\UserProfileUid;
-use BaksDev\Wildberries\Repository\AllProfileToken\AllProfileTokenInterface;
+use BaksDev\Wildberries\Repository\AllProfileToken\AllProfileWildberriesTokenInterface;
 use BaksDev\Wildberries\Support\Messenger\Schedules\GetWbReviews\GetWbReviewsMessage;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
@@ -46,7 +46,7 @@ final readonly class FindProfileForCreateWbReviewHandler
     public function __construct(
         #[Target('wildberriesSupportLogger')] private LoggerInterface $logger,
         private MessageDispatchInterface $messageDispatch,
-        private AllProfileTokenInterface $allProfileTokens,
+        private AllProfileWildberriesTokenInterface $allProfileTokens,
     ) {}
 
     public function __invoke(FindProfileForCreateWbReviewMessage $message): void

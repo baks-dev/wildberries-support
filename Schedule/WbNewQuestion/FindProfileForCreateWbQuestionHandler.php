@@ -28,11 +28,11 @@ namespace BaksDev\Wildberries\Support\Schedule\WbNewQuestion;
 use BaksDev\Core\Messenger\MessageDelay;
 use BaksDev\Core\Messenger\MessageDispatchInterface;
 use BaksDev\Users\Profile\UserProfile\Type\Id\UserProfileUid;
-use BaksDev\Wildberries\Repository\AllProfileToken\AllProfileTokenInterface;
+use BaksDev\Wildberries\Repository\AllProfileToken\AllProfileWildberriesTokenInterface;
 use BaksDev\Wildberries\Support\Messenger\Schedules\GetWbQuestions\GetWbQuestionsMessage;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\DependencyInjection\Attribute\Target;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
  * Инициируем получение вопросов Wildberries:
@@ -46,7 +46,7 @@ final readonly class FindProfileForCreateWbQuestionHandler
     public function __construct(
         #[Target('wildberriesSupportLogger')] private LoggerInterface $logger,
         private MessageDispatchInterface $messageDispatch,
-        private AllProfileTokenInterface $allProfileTokens,
+        private AllProfileWildberriesTokenInterface $allProfileTokens,
     ) {}
 
     public function __invoke(FindProfileForCreateWbQuestionMessage $message): void
