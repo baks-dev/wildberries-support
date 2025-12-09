@@ -23,30 +23,33 @@
 
 declare(strict_types=1);
 
-namespace BaksDev\Wildberries\Support\Messenger\ReplyToChat;
+namespace BaksDev\Wildberries\Support\Messenger\ReplyToReview;
 
 use BaksDev\Core\Messenger\MessageDelay;
 use BaksDev\Core\Messenger\MessageDispatchInterface;
 use BaksDev\Support\Entity\Event\SupportEvent;
 use BaksDev\Support\Messenger\SupportMessage;
+use BaksDev\Support\Repository\SupportCurrentEvent\CurrentSupportEventInterface;
 use BaksDev\Support\Repository\SupportCurrentEvent\CurrentSupportEventRepository;
 use BaksDev\Support\Type\Status\SupportStatus\Collection\SupportStatusClose;
+use BaksDev\Support\UseCase\Admin\New\Invariable\SupportInvariableDTO;
 use BaksDev\Support\UseCase\Admin\New\Message\SupportMessageDTO;
 use BaksDev\Support\UseCase\Admin\New\SupportDTO;
-use BaksDev\Wildberries\Support\Api\Chat\ReplyToChat\PostWbReplyToChatRequest;
-use BaksDev\Wildberries\Support\Type\WbChatProfileType;
+use BaksDev\Wildberries\Support\Api\Review\ReplyToReview\PostWbReplyToReviewRequest;
+use BaksDev\Wildberries\Support\Type\WbReviewProfileType;
+use BaksDev\Wildberries\Type\id\WbTokenUid;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-final readonly class SendWbMessageChatHandler
+final readonly class SendWbReplyToReviewDispatcher
 {
     public function __construct(
         #[Target('wildberriesSupportLogger')] private LoggerInterface $logger,
         private MessageDispatchInterface $messageDispatch,
-        private CurrentSupportEventRepository $currentSupportEvent,
-        private PostWbReplyToChatRequest $sendMessageRequest,
+        private CurrentSupportEventInterface $CurrentSupportEventRepository,
+        private PostWbReplyToReviewRequest $sendMessageRequest,
     ) {}
 
     /**
@@ -56,10 +59,10 @@ final readonly class SendWbMessageChatHandler
      * - отправляем последнее добавленное сообщение - наш ответ;
      * - в случае ошибки WB API повторяем текущий процесс через интервал времени.
      */
+
     public function __invoke(SupportMessage $message): void
     {
-
-        $SupportEvent = $this->currentSupportEvent
+        $SupportEvent = $this->CurrentSupportEventRepository
             ->forSupport($message->getId())
             ->find();
 
@@ -73,52 +76,54 @@ final readonly class SendWbMessageChatHandler
             return;
         }
 
-        $SupportDTO = $SupportEvent->getDto(SupportDTO::class);
-        $SupportInvariableDTO = $SupportDTO->getInvariable();
-
-        if(is_null($SupportInvariableDTO))
-        {
-            return;
-        }
-
         /**
          * Ответ только на закрытый тикет
          */
-        if(false === $SupportDTO->getStatus()->equals(SupportStatusClose::class))
+        if(false === ($SupportEvent->isStatusEquals(SupportStatusClose::class)))
         {
+            $this->logger->debug(sprintf('Тикет %s не получил ответ на отзыв', $SupportEvent->getId()));
+
+            return;
+        }
+
+
+        /** @var SupportDTO $SupportDTO */
+        $SupportDTO = $SupportEvent->getDto(SupportDTO::class);
+        $SupportInvariableDTO = $SupportDTO->getInvariable();
+
+        if(false === ($SupportInvariableDTO instanceof SupportInvariableDTO))
+        {
+            $this->logger->warning(sprintf('Support Invariable Тикет %s не определен', $SupportEvent->getId()));
+
             return;
         }
 
         /**
-         * Пропускаем если тикет не является Wildberries Support Chat «Чат с покупателем»
+         * Пропускаем если тикет не является Wildberries Support Review «Отзыв»
          */
         $typeProfile = $SupportInvariableDTO->getType();
 
-        if(false === $typeProfile->equals(WbChatProfileType::TYPE))
+        if(false === $typeProfile->equals(WbReviewProfileType::TYPE))
         {
             return;
         }
 
-        /** @var SupportMessageDTO $firstMessage */
-        $firstMessage = $SupportDTO->getMessages()->first();
 
         /** @var SupportMessageDTO $lastMessage */
         $lastMessage = $SupportDTO->getMessages()->last();
 
         // проверяем наличие внешнего ID - для наших ответов его быть не должно
-        if($lastMessage->getExternal() !== null)
+        if(null !== $lastMessage->getExternal())
         {
             return;
         }
 
-        $replySign = $firstMessage->getExternal();
         $lastMessageText = $lastMessage->getMessage();
-
-        $UserProfileUid = $SupportInvariableDTO->getProfile();
+        $externalChatId = $SupportInvariableDTO->getTicket();
 
         $result = $this->sendMessageRequest
-            ->profile($UserProfileUid)
-            ->replySign($replySign)
+            ->forTokenIdentifier(new WbTokenUid($SupportDTO->getToken()->getValue()))
+            ->chatId($externalChatId)
             ->message($lastMessageText)
             ->sendMessage();
 
@@ -137,5 +142,6 @@ final readonly class SendWbMessageChatHandler
                     transport: 'wildberries-support',
                 );
         }
+
     }
 }

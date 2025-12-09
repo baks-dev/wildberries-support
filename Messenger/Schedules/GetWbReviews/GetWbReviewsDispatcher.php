@@ -136,31 +136,37 @@ final readonly class GetWbReviewsDispatcher
                     continue;
                 }
 
-                /** SupportEvent */
-                $SupportDTO = new SupportDTO() // done
-                ->setPriority(new SupportPriority(SupportPriorityLow::class))
+                /**
+                 * SupportEvent
+                 */
+
+                $SupportDTO = new SupportDTO();
+                /** Присваиваем идентификатор токена для последующего ответа */
+                $SupportDTO->getToken()->setValue($WbTokenUid);
+                $SupportDTO
+                    ->setPriority(new SupportPriority(SupportPriorityLow::class))
                     ->setStatus(new SupportStatus(SupportStatusOpen::class));
 
-                /** Присваиваем токен для последующего поиска */
-                $SupportDTO->getToken()->setValue($message->getProfile());
 
+                /**
+                 * SupportInvariable
+                 */
 
-                /** SupportInvariable */
                 $supportInvariableDTO = new SupportInvariableDTO()
                     ->setProfile($message->getProfile())
                     ->setType(new TypeProfileUid(WbReviewProfileType::TYPE))
                     ->setTicket($ticket);
 
                 // текущее событие тикета по идентификатору тикета из Wb
-                $support = $this->CurrentSupportEventByTicketRepository
+                $SupportEvent = $this->CurrentSupportEventByTicketRepository
                     ->forTicket($ticket)
                     ->find();
 
                 /** Пересохраняем событие с новыми данными */
-                !($support instanceof SupportEvent) ?: $support->getDto($SupportDTO);
+                false === ($SupportEvent instanceof SupportEvent) ?: $SupportEvent->getDto($SupportDTO);
 
                 /** Устанавливаем заголовок чата - выполнится только один раз при сохранении чата */
-                if(false === $support)
+                if(false === ($SupportEvent instanceof SupportEvent))
                 {
                     $supportInvariableDTO->setTitle($WbReviewMessageDTO->getTitle());
                 }

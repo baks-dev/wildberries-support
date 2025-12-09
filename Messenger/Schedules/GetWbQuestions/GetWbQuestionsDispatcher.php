@@ -141,13 +141,18 @@ final class GetWbQuestionsDispatcher
 
                 $ticket = $WbQuestionMessageDTO->getId();
 
-                /** SupportEvent */
-                $supportDTO = new SupportDTO() // done
-                ->setPriority(new SupportPriority(SupportPriorityLow::class))
+                /**
+                 * SupportEvent
+                 */
+                $SupportDTO = new SupportDTO();
+
+                /** Присваиваем токен для последующего ответа */
+                $SupportDTO->getToken()->setValue($WbTokenUid);
+
+                $SupportDTO
+                    ->setPriority(new SupportPriority(SupportPriorityLow::class))
                     ->setStatus(new SupportStatus(SupportStatusOpen::class));
 
-                /** Присваиваем токен для последующего поиска */
-                $supportDTO->getToken()->setValue($message->getProfile());
 
                 /** SupportInvariable */
                 $supportInvariableDTO = new SupportInvariableDTO()
@@ -161,7 +166,7 @@ final class GetWbQuestionsDispatcher
                     ->find();
 
                 /** Пересохраняю событие с новыми данными */
-                false === ($support instanceof SupportEvent) ?: $support->getDto($supportDTO);
+                false === ($support instanceof SupportEvent) ?: $support->getDto($SupportDTO);
 
                 /** Устанавливаем заголовок чата - выполнится только один раз при сохранении чата */
                 if(false === $support)
@@ -169,7 +174,7 @@ final class GetWbQuestionsDispatcher
                     $supportInvariableDTO->setTitle($WbQuestionMessageDTO->getTitle());
                 }
 
-                $supportDTO->setInvariable($supportInvariableDTO);
+                $SupportDTO->setInvariable($supportInvariableDTO);
 
                 // подготовка DTO для нового сообщения
                 $supportMessageDTO = new SupportMessageDTO()
@@ -179,20 +184,21 @@ final class GetWbQuestionsDispatcher
                     ->setName($this->translator->trans('user', domain: 'support.admin', locale: $this->translator->getLocale()))
                     ->setInMessage();
 
-                $supportDTO->setStatus(new SupportStatus(SupportStatusOpen::class));
-                $supportDTO->addMessage($supportMessageDTO);
+                $SupportDTO
+                    ->setStatus(new SupportStatus(SupportStatusOpen::class))
+                    ->addMessage($supportMessageDTO);
 
                 $this->isAddMessage ?: $this->isAddMessage = true;
 
                 $this->patchWbCheckQuestionViewedRequest
-                    ->profile($message->getProfile())
+                    ->forTokenIdentifier($WbTokenUid)
                     ->id($ticket)
                     ->send();
 
                 /** Сохраняем, если имеются новые сообщения в массиве */
                 if(true === $this->isAddMessage)
                 {
-                    $handle = $this->supportHandler->handle($supportDTO);
+                    $handle = $this->supportHandler->handle($SupportDTO);
 
                     if(false === $handle instanceof Support)
                     {
@@ -201,7 +207,7 @@ final class GetWbQuestionsDispatcher
                             [
                                 self::class.':'.__LINE__,
                                 $message->getProfile(),
-                                $supportDTO->getInvariable()?->getTicket(),
+                                $SupportDTO->getInvariable()?->getTicket(),
                             ],
                         );
                     }

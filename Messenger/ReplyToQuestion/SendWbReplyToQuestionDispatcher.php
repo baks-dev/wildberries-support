@@ -28,23 +28,25 @@ namespace BaksDev\Wildberries\Support\Messenger\ReplyToQuestion;
 use BaksDev\Core\Messenger\MessageDelay;
 use BaksDev\Core\Messenger\MessageDispatchInterface;
 use BaksDev\Support\Messenger\SupportMessage;
+use BaksDev\Support\Repository\SupportCurrentEvent\CurrentSupportEventInterface;
 use BaksDev\Support\Repository\SupportCurrentEvent\CurrentSupportEventRepository;
 use BaksDev\Support\Type\Status\SupportStatus\Collection\SupportStatusClose;
 use BaksDev\Support\UseCase\Admin\New\Message\SupportMessageDTO;
 use BaksDev\Support\UseCase\Admin\New\SupportDTO;
 use BaksDev\Wildberries\Support\Api\Question\ReplyToQuestion\PostWbReplyToQuestionRequest;
 use BaksDev\Wildberries\Support\Type\WbQuestionProfileType;
+use BaksDev\Wildberries\Type\id\WbTokenUid;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-final readonly class SendWbReplyToQuestionHandler
+final readonly class SendWbReplyToQuestionDispatcher
 {
     public function __construct(
         #[Target('wildberriesSupportLogger')] private LoggerInterface $logger,
         private MessageDispatchInterface $messageDispatch,
-        private CurrentSupportEventRepository $currentSupportEvent,
+        private CurrentSupportEventInterface $CurrentSupportEventRepository,
         private PostWbReplyToQuestionRequest $postWbReplyToQuestionRequest,
     ) {}
 
@@ -59,7 +61,7 @@ final readonly class SendWbReplyToQuestionHandler
     public function __invoke(SupportMessage $message): void
     {
 
-        $SupportEvent = $this->currentSupportEvent
+        $SupportEvent = $this->CurrentSupportEventRepository
             ->forSupport($message->getId())
             ->find();
 
@@ -73,6 +75,7 @@ final readonly class SendWbReplyToQuestionHandler
             return;
         }
 
+        /** @var SupportDTO $SupportDTO */
         $SupportDTO = $SupportEvent->getDto(SupportDTO::class);
         $SupportInvariableDTO = $SupportDTO->getInvariable();
 
@@ -101,6 +104,7 @@ final readonly class SendWbReplyToQuestionHandler
 
         /**
          * Первое сообщение, содержащее идентификатор вопроса
+         *
          * @var SupportMessageDTO $firstMessage
          */
 
@@ -114,6 +118,7 @@ final readonly class SendWbReplyToQuestionHandler
 
         /**
          * Последнее сообщение для ответа
+         *
          * @var SupportMessageDTO $lastMessage
          */
 
@@ -131,6 +136,7 @@ final readonly class SendWbReplyToQuestionHandler
          */
 
         $result = $this->postWbReplyToQuestionRequest
+            ->forTokenIdentifier(new WbTokenUid($SupportDTO->getToken()->getValue()))
             ->chatId($ticket)
             ->message($messageText)
             ->state($state)

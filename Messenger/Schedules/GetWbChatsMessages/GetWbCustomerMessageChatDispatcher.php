@@ -138,8 +138,8 @@ final class GetWbCustomerMessageChatDispatcher
                  */
                 $SupportDTO = new SupportDTO();
 
-                /** Присваиваем токен для последующего поиска */
-                $SupportDTO->getToken()->setValue($message->getProfile());
+                /** Присваиваем токен для последующего ответа */
+                $SupportDTO->getToken()->setValue($WbTokenUid);
 
                 $SupportDTO
                     ->setPriority(new SupportPriority(SupportPriorityLow::class))

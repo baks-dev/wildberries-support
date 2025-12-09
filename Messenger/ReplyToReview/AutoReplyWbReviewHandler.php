@@ -43,8 +43,7 @@ use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-
-final readonly class AutoReplyWbReviewDispatcher
+final readonly class AutoReplyWbReviewHandler
 {
     public function __construct(
         #[Target('wildberriesSupportLogger')] private LoggerInterface $logger,
@@ -79,16 +78,16 @@ final readonly class AutoReplyWbReviewDispatcher
             return;
         }
 
-        // гидрируем DTO активным событием
-        $supportDTO = $supportEvent->getDto(SupportDTO::class);
+        /** @var SupportDTO $SupportDTO */
+        $SupportDTO = $supportEvent->getDto(SupportDTO::class);
 
         // обрабатываем только на открытый тикет
-        if(false === ($supportDTO->getStatus()->getSupportStatus() instanceof SupportStatusOpen))
+        if(false === ($SupportDTO->getStatus()->getSupportStatus() instanceof SupportStatusOpen))
         {
             return;
         }
 
-        $supportInvariableDTO = $supportDTO->getInvariable();
+        $supportInvariableDTO = $SupportDTO->getInvariable();
 
         if(is_null($supportInvariableDTO))
         {
@@ -127,9 +126,10 @@ final readonly class AutoReplyWbReviewDispatcher
 
         /**
          * Если известно имя клиента - подставляем для приветствия
+         *
          * @var SupportMessageDTO $currentMessage
          */
-        $currentMessage = $supportDTO->getMessages()->current();
+        $currentMessage = $SupportDTO->getMessages()->current();
         $clientName = $currentMessage->getName();
 
         if(!empty($clientName) && $clientName !== 'Покупатель')
@@ -145,19 +145,19 @@ final readonly class AutoReplyWbReviewDispatcher
             ->setDate(new DateTimeImmutable('now'))
             ->setOutMessage();
 
-        $supportDTO
+        $SupportDTO
             ->setStatus(new SupportStatus(SupportStatusClose::class)) // закрываем чат
             ->addMessage($supportMessageDTO) // добавляем сформированное сообщение
         ;
 
         // сохраняем ответ
-        $Support = $this->supportHandler->handle($supportDTO);
+        $Support = $this->supportHandler->handle($SupportDTO);
 
         if(false === ($Support instanceof Support))
         {
             $this->logger->critical(
                 'wildberries-support: Ошибка при отправке автоматического ответа на отзыв',
-                [$Support, self::class.':'.__LINE__]
+                [$Support, self::class.':'.__LINE__],
             );
 
             return;
@@ -165,7 +165,7 @@ final readonly class AutoReplyWbReviewDispatcher
 
         $this->logger->info(
             'Отправили автоматический ответ на отзыв',
-            [$Support, self::class.':'.__LINE__]
+            [$Support, self::class.':'.__LINE__],
         );
 
         $DeduplicatorExecuted->save();
