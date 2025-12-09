@@ -42,8 +42,8 @@ use BaksDev\Support\UseCase\Admin\New\Message\SupportMessageDTO;
 use BaksDev\Support\UseCase\Admin\New\SupportDTO;
 use BaksDev\Support\UseCase\Admin\New\SupportHandler;
 use BaksDev\Users\Profile\TypeProfile\Type\Id\TypeProfileUid;
+use BaksDev\Wildberries\Repository\AllWbTokensByProfile\AllWbTokensByProfileInterface;
 use BaksDev\Wildberries\Support\Api\Review\ReviewsList\GetWbReviewsListRequest;
-use BaksDev\Wildberries\Support\Api\Review\ReviewsList\WbReviewMessageDTO;
 use BaksDev\Wildberries\Support\Messenger\ReplyToReview\AutoReplyWbReviewMessage;
 use BaksDev\Wildberries\Support\Schedule\WbNewReview\FindProfileForCreateWbReviewSchedule;
 use BaksDev\Wildberries\Support\Type\WbReviewProfileType;
@@ -61,155 +61,172 @@ final readonly class GetWbReviewsDispatcher
         #[Target('wildberriesSupportLogger')] private LoggerInterface $logger,
         private DeduplicatorInterface $deduplicator,
         private GetWbReviewsListRequest $GetWbReviewsListRequest,
-        private CurrentSupportEventByTicketInterface $supportByWbChat,
+        private CurrentSupportEventByTicketInterface $CurrentSupportEventByTicketRepository,
         private ExistSupportTicketInterface $ExistSupportTicket,
+        private AllWbTokensByProfileInterface $AllWbTokensByProfileRepository,
         private SupportHandler $supportHandler,
         private MessageDispatch $messageDispatch,
     ) {}
 
     public function __invoke(GetWbReviewsMessage $message): void
     {
-        $UserProfileUid = $message->getProfile();
 
         /**
-         * Получаем новые отзывы
-         *
-         * @see GetWbReviewsListRequest
+         * Получаем все токены профиля пользователя
          */
 
-        $reviews = $this->GetWbReviewsListRequest
-            ->profile($UserProfileUid)
+        $tokensByProfile = $this->AllWbTokensByProfileRepository
+            ->forProfile($message->getProfile())
             ->findAll();
 
-        if(false === $reviews || false === $reviews->valid())
+        if(false === $tokensByProfile || false === $tokensByProfile->valid())
         {
             return;
         }
 
-        /** @var WbReviewMessageDTO $review */
-        foreach($reviews as $review)
-        {
-            $Deduplicator = $this->deduplicator
-                ->namespace('wildberries-support')
-                ->expiresAfter('1 hour')
-                ->deduplication([$review->getId(), self::class]);
 
-            if($Deduplicator->isExecuted())
+        foreach($tokensByProfile as $WbTokenUid)
+        {
+            /**
+             * Получаем новые отзывы
+             *
+             * @see GetWbReviewsListRequest
+             */
+
+            $reviews = $this->GetWbReviewsListRequest
+                ->forTokenIdentifier($WbTokenUid)
+                ->findAll();
+
+            if(false === $reviews || false === $reviews->valid())
             {
                 return;
             }
 
-            if(empty($review->getData()))
+
+            foreach($reviews as $WbReviewMessageDTO)
             {
-                continue;
-            }
+                $Deduplicator = $this->deduplicator
+                    ->namespace('wildberries-support')
+                    ->expiresAfter('1 hour')
+                    ->deduplication([$WbReviewMessageDTO->getId(), self::class]);
 
-            $ticket = $review->getId();
+                if($Deduplicator->isExecuted())
+                {
+                    return;
+                }
 
-            /**
-             * Пропускаем, если указанный тикет добавлен
-             *
-             * @see ExistSupportTicketInterface
-             */
-            $questionExist = $this->ExistSupportTicket
-                ->ticket($ticket)
-                ->exist();
+                if(empty($WbReviewMessageDTO->getData()))
+                {
+                    continue;
+                }
 
-            if($questionExist)
-            {
-                continue;
-            }
+                $ticket = $WbReviewMessageDTO->getId();
 
-            /** SupportEvent */
-            $SupportDTO = new SupportDTO() // done
-            ->setPriority(new SupportPriority(SupportPriorityLow::class))
-                ->setStatus(new SupportStatus(SupportStatusOpen::class));
+                /**
+                 * Пропускаем, если указанный тикет добавлен
+                 *
+                 * @see ExistSupportTicketInterface
+                 */
+                $questionExist = $this->ExistSupportTicket
+                    ->ticket($ticket)
+                    ->exist();
 
-            /** Присваиваем токен для последующего поиска */
-            $SupportDTO->getToken()->setValue($message->getProfile());
+                if($questionExist)
+                {
+                    continue;
+                }
 
+                /** SupportEvent */
+                $SupportDTO = new SupportDTO() // done
+                ->setPriority(new SupportPriority(SupportPriorityLow::class))
+                    ->setStatus(new SupportStatus(SupportStatusOpen::class));
 
-            /** SupportInvariable */
-            $supportInvariableDTO = new SupportInvariableDTO()
-                ->setProfile($UserProfileUid)
-                ->setType(new TypeProfileUid(WbReviewProfileType::TYPE))
-                ->setTicket($ticket);
-
-            // текущее событие тикета по идентификатору тикета из Wb
-            $support = $this->supportByWbChat
-                ->forTicket($ticket)
-                ->find();
-
-            /** Пересохраняем событие с новыми данными */
-            !($support instanceof SupportEvent) ?: $support->getDto($SupportDTO);
-
-            /** Устанавливаем заголовок чата - выполнится только один раз при сохранении чата */
-            if(false === $support)
-            {
-                $supportInvariableDTO->setTitle($review->getTitle());
-            }
+                /** Присваиваем токен для последующего поиска */
+                $SupportDTO->getToken()->setValue($message->getProfile());
 
 
-            // подготовка DTO для нового сообщения
-            $supportMessageDTO = new SupportMessageDTO()
-                ->setMessage($review->getData())
-                ->setDate($review->getCreated())
-                ->setExternal($review->getId()) // идентификатор сообщения в WB
-                ->setName($review->getName())
-                ->setInMessage();
+                /** SupportInvariable */
+                $supportInvariableDTO = new SupportInvariableDTO()
+                    ->setProfile($message->getProfile())
+                    ->setType(new TypeProfileUid(WbReviewProfileType::TYPE))
+                    ->setTicket($ticket);
 
-            $SupportDTO
-                ->setStatus(new SupportStatus(SupportStatusOpen::class))
-                ->setInvariable($supportInvariableDTO)
-                ->addMessage($supportMessageDTO);
+                // текущее событие тикета по идентификатору тикета из Wb
+                $support = $this->CurrentSupportEventByTicketRepository
+                    ->forTicket($ticket)
+                    ->find();
 
+                /** Пересохраняем событие с новыми данными */
+                !($support instanceof SupportEvent) ?: $support->getDto($SupportDTO);
 
-            /** Сохраняем, если имеются новые сообщения в массиве */
-
-            $handle = $this->supportHandler->handle($SupportDTO);
-
-            if(false === $handle instanceof Support)
-            {
-                $this->logger->critical(
-                    sprintf('wildberries-support: Ошибка %s при создании/обновлении отзывов', $handle),
-                    [
-                        self::class.':'.__LINE__,
-                        $UserProfileUid,
-                        $SupportDTO->getInvariable()?->getTicket(),
-                    ],
-                );
-
-                continue;
-            }
-
-            $Deduplicator->save();
+                /** Устанавливаем заголовок чата - выполнится только один раз при сохранении чата */
+                if(false === $support)
+                {
+                    $supportInvariableDTO->setTitle($WbReviewMessageDTO->getTitle());
+                }
 
 
-            // после добавления отзыва в БД - инициирую авто ответ по условию
+                // подготовка DTO для нового сообщения
+                $supportMessageDTO = new SupportMessageDTO()
+                    ->setMessage($WbReviewMessageDTO->getData())
+                    ->setDate($WbReviewMessageDTO->getCreated())
+                    ->setExternal($WbReviewMessageDTO->getId()) // идентификатор сообщения в WB
+                    ->setName($WbReviewMessageDTO->getName())
+                    ->setInMessage();
 
-            /**
-             * Условия ответа на отзывы
-             *
-             * рейтинг равен 5 с текстом:
-             * - авто комментарий с благодарностью (сообщение)
-             *
-             * рейтинг меньше 5 и без текста:
-             * - авто комментарий с извинениями (сообщение)
-             *
-             * рейтинг меньше 5 с текстом:
-             * - отвечает контент менеджер
-             */
+                $SupportDTO
+                    ->setStatus(new SupportStatus(SupportStatusOpen::class))
+                    ->setInvariable($supportInvariableDTO)
+                    ->addMessage($supportMessageDTO);
 
-            $reviewRating = $review->getValuation();
 
-            if($reviewRating === 5 || empty($review->getIsText()))
-            {
-                /** @var Support $handle */
-                $this->messageDispatch->dispatch(
-                    message: new AutoReplyWbReviewMessage($handle->getId(), $reviewRating),
-                    stamps: [new MessageDelay(FindProfileForCreateWbReviewSchedule::INTERVAL)],
-                    transport: 'wildberries-support',
-                );
+                /** Сохраняем, если имеются новые сообщения в массиве */
+
+                $handle = $this->supportHandler->handle($SupportDTO);
+
+                if(false === $handle instanceof Support)
+                {
+                    $this->logger->critical(
+                        sprintf('wildberries-support: Ошибка %s при создании/обновлении отзывов', $handle),
+                        [
+                            self::class.':'.__LINE__,
+                            $message->getProfile(),
+                            $SupportDTO->getInvariable()?->getTicket(),
+                        ],
+                    );
+
+                    continue;
+                }
+
+                $Deduplicator->save();
+
+
+                // после добавления отзыва в БД - инициирую авто ответ по условию
+
+                /**
+                 * Условия ответа на отзывы
+                 *
+                 * рейтинг равен 5 с текстом:
+                 * - авто комментарий с благодарностью (сообщение)
+                 *
+                 * рейтинг меньше 5 и без текста:
+                 * - авто комментарий с извинениями (сообщение)
+                 *
+                 * рейтинг меньше 5 с текстом:
+                 * - отвечает контент менеджер
+                 */
+
+                $reviewRating = $WbReviewMessageDTO->getValuation();
+
+                if($reviewRating === 5 || empty($WbReviewMessageDTO->getIsText()))
+                {
+                    /** @var Support $handle */
+                    $this->messageDispatch->dispatch(
+                        message: new AutoReplyWbReviewMessage($handle->getId(), $reviewRating),
+                        stamps: [new MessageDelay(FindProfileForCreateWbReviewSchedule::INTERVAL)],
+                        transport: 'wildberries-support',
+                    );
+                }
             }
         }
     }

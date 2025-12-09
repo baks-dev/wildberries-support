@@ -38,9 +38,9 @@ use BaksDev\Support\UseCase\Admin\New\Message\SupportMessageDTO;
 use BaksDev\Support\UseCase\Admin\New\SupportDTO;
 use BaksDev\Support\UseCase\Admin\New\SupportHandler;
 use BaksDev\Users\Profile\TypeProfile\Type\Id\TypeProfileUid;
+use BaksDev\Wildberries\Repository\AllWbTokensByProfile\AllWbTokensByProfileInterface;
 use BaksDev\Wildberries\Support\Api\Question\CheckViewed\PatchWbCheckQuestionViewedRequest;
 use BaksDev\Wildberries\Support\Api\Question\QuestionsList\GetWbQuestionsListRequest;
-use BaksDev\Wildberries\Support\Api\Question\QuestionsList\WbQuestionMessageDTO;
 use BaksDev\Wildberries\Support\Schedule\WbNewQuestion\FindProfileForCreateWbQuestionSchedule;
 use BaksDev\Wildberries\Support\Type\WbQuestionProfileType;
 use DateInterval;
@@ -65,7 +65,8 @@ final class GetWbQuestionsDispatcher
         private readonly DeduplicatorInterface $deduplicator,
         private readonly GetWbQuestionsListRequest $GetWbQuestionsListRequest,
         private readonly PatchWbCheckQuestionViewedRequest $patchWbCheckQuestionViewedRequest,
-        private readonly CurrentSupportEventByTicketInterface $supportByWbChat,
+        private readonly CurrentSupportEventByTicketInterface $CurrentSupportEventByTicketRepository,
+        private readonly AllWbTokensByProfileInterface $AllWbTokensByProfileRepository,
         private readonly SupportHandler $supportHandler,
         private readonly TranslatorInterface $translator,
     ) {}
@@ -92,108 +93,122 @@ final class GetWbQuestionsDispatcher
             $this->GetWbQuestionsListRequest->from($DateTimeFrom);
         }
 
-        $UserProfileUid = $message->getProfile();
-
         /**
-         * Получаем новые вопросы
-         *
-         * @see GetWbQuestionsListRequest
+         * Получаем все токены профиля пользователя
          */
-        $questions = $this->GetWbQuestionsListRequest
-            ->profile($UserProfileUid)
+
+        $tokensByProfile = $this->AllWbTokensByProfileRepository
+            ->forProfile($message->getProfile())
             ->findAll();
 
-        if(false === $questions || false === $questions->valid())
+        if(false === $tokensByProfile || false === $tokensByProfile->valid())
         {
             return;
         }
 
-        /** @var WbQuestionMessageDTO $question */
-        foreach($questions as $question)
-        {
-            $Deduplicator = $this->deduplicator
-                ->namespace('wildberries-support')
-                ->deduplication([$question->getId(), self::class]);
 
-            if($Deduplicator->isExecuted())
+        foreach($tokensByProfile as $WbTokenUid)
+        {
+            /**
+             * Получаем новые вопросы
+             *
+             * @see GetWbQuestionsListRequest
+             */
+            $questions = $this->GetWbQuestionsListRequest
+                ->forTokenIdentifier($WbTokenUid)
+                ->findAll();
+
+            if(false === $questions || false === $questions->valid())
             {
                 return;
             }
 
-            if($question->getData() === '')
+            foreach($questions as $WbQuestionMessageDTO)
             {
-                continue;
-            }
+                $Deduplicator = $this->deduplicator
+                    ->namespace('wildberries-support')
+                    ->deduplication([$WbQuestionMessageDTO->getId(), self::class]);
 
-            $ticket = $question->getId();
-
-            /** SupportEvent */
-            $supportDTO = new SupportDTO() // done
-            ->setPriority(new SupportPriority(SupportPriorityLow::class))
-                ->setStatus(new SupportStatus(SupportStatusOpen::class));
-
-            /** Присваиваем токен для последующего поиска */
-            $supportDTO->getToken()->setValue($message->getProfile());
-
-            /** SupportInvariable */
-            $supportInvariableDTO = new SupportInvariableDTO()
-                ->setProfile($UserProfileUid)
-                ->setType(new TypeProfileUid(WbQuestionProfileType::TYPE))
-                ->setTicket($ticket);
-
-            // текущее событие тикета по идентификатору тикета из Wb
-            $support = $this->supportByWbChat
-                ->forTicket($ticket)
-                ->find();
-
-            /** Пересохраняю событие с новыми данными */
-            false === ($support instanceof SupportEvent) ?: $support->getDto($supportDTO);
-
-            /** Устанавливаем заголовок чата - выполнится только один раз при сохранении чата */
-            if(false === $support)
-            {
-                $supportInvariableDTO->setTitle($question->getTitle());
-            }
-
-            $supportDTO->setInvariable($supportInvariableDTO);
-
-            // подготовка DTO для нового сообщения
-            $supportMessageDTO = new SupportMessageDTO()
-                ->setMessage($question->getData())
-                ->setDate($question->getCreated())
-                ->setExternal($question->getId()) // идентификатор сообщения в WB
-                ->setName($this->translator->trans('user', domain: 'support.admin', locale: $this->translator->getLocale()))
-                ->setInMessage();
-
-            $supportDTO->setStatus(new SupportStatus(SupportStatusOpen::class));
-            $supportDTO->addMessage($supportMessageDTO);
-
-            $this->isAddMessage ?: $this->isAddMessage = true;
-
-            $this->patchWbCheckQuestionViewedRequest
-                ->profile($UserProfileUid)
-                ->id($ticket)
-                ->send();
-
-            /** Сохраняем, если имеются новые сообщения в массиве */
-            if(true === $this->isAddMessage)
-            {
-                $handle = $this->supportHandler->handle($supportDTO);
-
-                if(false === $handle instanceof Support)
+                if($Deduplicator->isExecuted())
                 {
-                    $this->logger->critical(
-                        sprintf('wildberries-support: Ошибка %s при создании/обновлении чата поддержки', $handle),
-                        [
-                            self::class.':'.__LINE__,
-                            $UserProfileUid,
-                            $supportDTO->getInvariable()?->getTicket(),
-                        ],
-                    );
+                    return;
                 }
+
+                if(empty($WbQuestionMessageDTO->getData()))
+                {
+                    continue;
+                }
+
+                $ticket = $WbQuestionMessageDTO->getId();
+
+                /** SupportEvent */
+                $supportDTO = new SupportDTO() // done
+                ->setPriority(new SupportPriority(SupportPriorityLow::class))
+                    ->setStatus(new SupportStatus(SupportStatusOpen::class));
+
+                /** Присваиваем токен для последующего поиска */
+                $supportDTO->getToken()->setValue($message->getProfile());
+
+                /** SupportInvariable */
+                $supportInvariableDTO = new SupportInvariableDTO()
+                    ->setProfile($message->getProfile())
+                    ->setType(new TypeProfileUid(WbQuestionProfileType::TYPE))
+                    ->setTicket($ticket);
+
+                // текущее событие тикета по идентификатору тикета из Wb
+                $support = $this->CurrentSupportEventByTicketRepository
+                    ->forTicket($ticket)
+                    ->find();
+
+                /** Пересохраняю событие с новыми данными */
+                false === ($support instanceof SupportEvent) ?: $support->getDto($supportDTO);
+
+                /** Устанавливаем заголовок чата - выполнится только один раз при сохранении чата */
+                if(false === $support)
+                {
+                    $supportInvariableDTO->setTitle($WbQuestionMessageDTO->getTitle());
+                }
+
+                $supportDTO->setInvariable($supportInvariableDTO);
+
+                // подготовка DTO для нового сообщения
+                $supportMessageDTO = new SupportMessageDTO()
+                    ->setMessage($WbQuestionMessageDTO->getData())
+                    ->setDate($WbQuestionMessageDTO->getCreated())
+                    ->setExternal($WbQuestionMessageDTO->getId()) // идентификатор сообщения в WB
+                    ->setName($this->translator->trans('user', domain: 'support.admin', locale: $this->translator->getLocale()))
+                    ->setInMessage();
+
+                $supportDTO->setStatus(new SupportStatus(SupportStatusOpen::class));
+                $supportDTO->addMessage($supportMessageDTO);
+
+                $this->isAddMessage ?: $this->isAddMessage = true;
+
+                $this->patchWbCheckQuestionViewedRequest
+                    ->profile($message->getProfile())
+                    ->id($ticket)
+                    ->send();
+
+                /** Сохраняем, если имеются новые сообщения в массиве */
+                if(true === $this->isAddMessage)
+                {
+                    $handle = $this->supportHandler->handle($supportDTO);
+
+                    if(false === $handle instanceof Support)
+                    {
+                        $this->logger->critical(
+                            sprintf('wildberries-support: Ошибка %s при создании/обновлении чата поддержки', $handle),
+                            [
+                                self::class.':'.__LINE__,
+                                $message->getProfile(),
+                                $supportDTO->getInvariable()?->getTicket(),
+                            ],
+                        );
+                    }
+                }
+
+                $Deduplicator->save();
             }
         }
-
-        $Deduplicator->save();
     }
 }

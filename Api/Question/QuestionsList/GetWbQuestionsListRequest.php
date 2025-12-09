@@ -49,6 +49,7 @@ final class GetWbQuestionsListRequest extends Wildberries
      * сортировать вопросы по дате и настроить пагинацию и количество вопросов в ответе
      *
      * @see https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Voprosy/paths/~1api~1v1~1questions/get
+     * @return Generator<WbQuestionMessageDTO>|false
      */
     public function findAll(): Generator|false
     {

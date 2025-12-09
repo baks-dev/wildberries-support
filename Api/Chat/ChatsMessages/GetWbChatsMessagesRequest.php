@@ -48,7 +48,9 @@ final class GetWbChatsMessagesRequest extends Wildberries
 
     /**
      * Метод позволяет получить список событий (сообщений).
+     *
      * @see https://dev.wildberries.ru/ru/openapi/user-communication#tag/Chat-s-pokupatelyami/paths/~1api~1v1~1seller~1events/get
+     * @return Generator<WbChatMessageDTO>|false
      */
     public function findAll(): Generator|false
     {
@@ -70,7 +72,7 @@ final class GetWbChatsMessagesRequest extends Wildberries
                         options: $this->next === false ? [] : [
                             "query" => [
                                 "next" => $this->next,
-                            ]
+                            ],
                         ],
                     );
 
@@ -82,15 +84,15 @@ final class GetWbChatsMessagesRequest extends Wildberries
                         sprintf('wildberries-support: Ошибка получения списка сообщений'),
                         [
                             self::class.':'.__LINE__,
-                            $content
+                            $content,
                         ]);
                     return false;
                 }
 
                 $item->expiresAfter(
                     DateInterval::createFromDateString(
-                        FindProfileForCreateWbSupportSchedule::INTERVAL
-                    )
+                        FindProfileForCreateWbSupportSchedule::INTERVAL,
+                    ),
                 );
 
                 return $content;

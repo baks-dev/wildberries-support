@@ -51,6 +51,9 @@ final class GetWbReviewsListRequest extends Wildberries
         return $this;
     }
 
+    /**
+     * @return Generator<WbReviewMessageDTO>|false
+     */
     public function findAll(): Generator|false
     {
         $take = self::LIMIT;
