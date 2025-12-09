@@ -56,6 +56,11 @@ final class GetWbReviewsListRequest extends Wildberries
      */
     public function findAll(): Generator|false
     {
+        if(false === $this->isStock())
+        {
+            return false;
+        }
+        
         $take = self::LIMIT;
         $skip = 0;
 

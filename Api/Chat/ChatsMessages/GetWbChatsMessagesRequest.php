@@ -54,6 +54,11 @@ final class GetWbChatsMessagesRequest extends Wildberries
      */
     public function findAll(): Generator|false
     {
+        if(false === $this->isStock())
+        {
+            return false;
+        }
+
         while(true)
         {
             $cache = $this->getCacheInit('wildberries-support');
