@@ -27,6 +27,7 @@ namespace BaksDev\Wildberries\Support\Api\Chat\ChatsMessages;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Exception;
 
 final class WbChatMessageDTO
 {
@@ -61,7 +62,7 @@ final class WbChatMessageDTO
     {
         $this->id = isset($data['replySign']) ? (string) $data['replySign'] : (string) $data['eventID'];
         $this->chatId = (string) $data['chatID'];
-        $this->userId = isset($this->userId) ? $data['clientID'] : false;
+        $this->userId = isset($data['clientID']) ? $data['clientID'] : false;
         $this->userType = (string) $data['sender'];
         $this->userName = $data['clientName'] ?? '';
 
@@ -83,7 +84,7 @@ final class WbChatMessageDTO
         return $this->chatId;
     }
 
-    public function getUserId(): string
+    public function getUserId(): string|false
     {
         return $this->userId;
     }
@@ -155,7 +156,9 @@ final class WbChatMessageDTO
 
                     $formattedData .= '<a href="'.$imageSrc.'" target="_blank"><img src="data:image/'.$extension.';base64,'.$content.'" style="max-width: 100px;"></a>';
                 }
-                catch (\Exception) {}
+                catch(Exception)
+                {
+                }
             }
         }
 

@@ -27,8 +27,11 @@ namespace BaksDev\Wildberries\Support\Api\Chat\ChatsMessages\Tests;
 
 use BaksDev\Users\Profile\UserProfile\Type\Id\UserProfileUid;
 use BaksDev\Wildberries\Support\Api\Chat\ChatsMessages\GetWbChatsMessagesRequest;
+use BaksDev\Wildberries\Support\Api\Chat\ChatsMessages\WbChatMessageDTO;
 use BaksDev\Wildberries\Type\Authorization\WbAuthorizationToken;
 use PHPUnit\Framework\Attributes\Group;
+use ReflectionClass;
+use ReflectionMethod;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\DependencyInjection\Attribute\When;
 
@@ -36,13 +39,18 @@ use Symfony\Component\DependencyInjection\Attribute\When;
 #[Group('wildberries-support')]
 final class GetWbChatsMessagesRequestTest extends KernelTestCase
 {
-    private static WbAuthorizationToken $authorization;
+    private static WbAuthorizationToken $Authorization;
 
     public static function setUpBeforeClass(): void
     {
-        self::$authorization = new WbAuthorizationToken(
-            new UserProfileUid(),
-            $_SERVER['TEST_WILDBERRIES_TOKEN'],
+        /** @see .env.test */
+        self::$Authorization = new WbAuthorizationToken(
+            profile: new UserProfileUid($_SERVER['TEST_WILDBERRIES_PROFILE']),
+            token: $_SERVER['TEST_WILDBERRIES_TOKEN'],
+            warehouse: $_SERVER['TEST_WILDBERRIES_WAREHOUSE'] ?? null,
+            percent: $_SERVER['TEST_WILDBERRIES_PERCENT'] ?? "0",
+            card: $_SERVER['TEST_WILDBERRIES_CARD'] === "true" ?? false,
+            stock: $_SERVER['TEST_WILDBERRIES_STOCK'] === "true" ?? false,
         );
     }
 
@@ -50,10 +58,29 @@ final class GetWbChatsMessagesRequestTest extends KernelTestCase
     {
         /** @var GetWbChatsMessagesRequest $wbChatMessagesRequest */
         $wbChatMessagesRequest = self::getContainer()->get(GetWbChatsMessagesRequest::class);
-        $wbChatMessagesRequest->TokenHttpClient(self::$authorization);
+        $wbChatMessagesRequest->TokenHttpClient(self::$Authorization);
 
-        $chats = $wbChatMessagesRequest->findAll();
+        $result = $wbChatMessagesRequest->findAll();
 
-        self::assertNotFalse($chats);
+        foreach($result as $WbChatMessageDTO)
+        {
+            // Вызываем все геттеры
+            $reflectionClass = new ReflectionClass(WbChatMessageDTO::class);
+            $methods = $reflectionClass->getMethods(ReflectionMethod::IS_PUBLIC);
+
+            foreach($methods as $method)
+            {
+                // Методы без аргументов
+                if($method->getNumberOfParameters() === 0)
+                {
+                    // Вызываем метод
+                    $data = $method->invoke($WbChatMessageDTO);
+                    //dump($method->getName());
+                    //dump($data);
+                }
+            }
+        }
+
+        self::assertTrue(true);
     }
 }

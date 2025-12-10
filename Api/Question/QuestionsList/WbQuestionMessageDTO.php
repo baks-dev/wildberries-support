@@ -50,6 +50,7 @@ final readonly class WbQuestionMessageDTO
         $this->data = $this->formatData($data);
 
         $this->title = 'Вопрос по товару '.$data['productDetails']['productName'];
+
     }
 
     public function getId(): string

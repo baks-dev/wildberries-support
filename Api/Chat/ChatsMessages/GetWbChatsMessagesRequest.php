@@ -86,6 +86,7 @@ final class GetWbChatsMessagesRequest extends Wildberries
                             self::class.':'.__LINE__,
                             $content,
                         ]);
+
                     return false;
                 }
 
