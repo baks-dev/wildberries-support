@@ -2,15 +2,15 @@ wb:
 
   support:
 
-    name: 'Wildberries Support'
+    name: 'WB: Сообщение'
     desc: 'Тип профиля Wildberries Support'
 
   question:
 
-    name: 'Wildberries Questions'
+    name: 'WB: Вопрос'
     desc: 'Тип профиля Wildberries Questions'
 
   review:
 
-    name: "Wildberries Reviews"
+    name: "WB: Отзыв"
     desc: "Тип профиля Wildberries Reviews"

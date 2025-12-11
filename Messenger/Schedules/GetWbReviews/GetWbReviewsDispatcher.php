@@ -62,7 +62,7 @@ final readonly class GetWbReviewsDispatcher
         private DeduplicatorInterface $deduplicator,
         private GetWbReviewsListRequest $GetWbReviewsListRequest,
         private CurrentSupportEventByTicketInterface $CurrentSupportEventByTicketRepository,
-        private ExistSupportTicketInterface $ExistSupportTicket,
+        private ExistSupportTicketInterface $ExistSupportTicketRepository,
         private AllWbTokensByProfileInterface $AllWbTokensByProfileRepository,
         private SupportHandler $supportHandler,
         private MessageDispatch $messageDispatch,
@@ -127,14 +127,16 @@ final readonly class GetWbReviewsDispatcher
                  *
                  * @see ExistSupportTicketInterface
                  */
-                $questionExist = $this->ExistSupportTicket
+                $questionExist = $this->ExistSupportTicketRepository
                     ->ticket($ticket)
                     ->exist();
 
                 if($questionExist)
                 {
+                    $Deduplicator->save();
                     continue;
                 }
+
 
                 /**
                  * SupportEvent

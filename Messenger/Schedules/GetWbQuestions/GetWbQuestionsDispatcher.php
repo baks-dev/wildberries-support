@@ -28,6 +28,7 @@ namespace BaksDev\Wildberries\Support\Messenger\Schedules\GetWbQuestions;
 use BaksDev\Core\Deduplicator\DeduplicatorInterface;
 use BaksDev\Support\Entity\Event\SupportEvent;
 use BaksDev\Support\Entity\Support;
+use BaksDev\Support\Repository\FindExistMessage\FindExistExternalMessageByIdInterface;
 use BaksDev\Support\Repository\SupportCurrentEventByTicket\CurrentSupportEventByTicketInterface;
 use BaksDev\Support\Type\Priority\SupportPriority;
 use BaksDev\Support\Type\Priority\SupportPriority\Collection\SupportPriorityLow;
@@ -67,6 +68,7 @@ final class GetWbQuestionsDispatcher
         private readonly PatchWbCheckQuestionViewedRequest $patchWbCheckQuestionViewedRequest,
         private readonly CurrentSupportEventByTicketInterface $CurrentSupportEventByTicketRepository,
         private readonly AllWbTokensByProfileInterface $AllWbTokensByProfileRepository,
+        private readonly FindExistExternalMessageByIdInterface $FindExistExternalMessageByIdRepository,
         private readonly SupportHandler $supportHandler,
         private readonly TranslatorInterface $translator,
     ) {}
@@ -139,7 +141,20 @@ final class GetWbQuestionsDispatcher
                     continue;
                 }
 
+
+                /** Если такое сообщение уже есть в БД, то пропускаем */
+                $messageExist = $this->FindExistExternalMessageByIdRepository
+                    ->external($WbQuestionMessageDTO->getId())
+                    ->exist();
+
+                if($messageExist)
+                {
+                    $Deduplicator->save();
+                    continue;
+                }
+
                 $ticket = $WbQuestionMessageDTO->getId();
+
 
                 /**
                  * SupportEvent
@@ -188,7 +203,7 @@ final class GetWbQuestionsDispatcher
                     ->setStatus(new SupportStatus(SupportStatusOpen::class))
                     ->addMessage($supportMessageDTO);
 
-                $this->isAddMessage ?: $this->isAddMessage = true;
+                //$this->isAddMessage ?: $this->isAddMessage = true;
 
                 $this->patchWbCheckQuestionViewedRequest
                     ->forTokenIdentifier($WbTokenUid)
@@ -196,22 +211,21 @@ final class GetWbQuestionsDispatcher
                     ->send();
 
                 /** Сохраняем, если имеются новые сообщения в массиве */
-                if(true === $this->isAddMessage)
-                {
-                    $handle = $this->supportHandler->handle($SupportDTO);
 
-                    if(false === $handle instanceof Support)
-                    {
-                        $this->logger->critical(
-                            sprintf('wildberries-support: Ошибка %s при создании/обновлении чата поддержки', $handle),
-                            [
-                                self::class.':'.__LINE__,
-                                $message->getProfile(),
-                                $SupportDTO->getInvariable()?->getTicket(),
-                            ],
-                        );
-                    }
+                $handle = $this->supportHandler->handle($SupportDTO);
+
+                if(false === $handle instanceof Support)
+                {
+                    $this->logger->critical(
+                        sprintf('wildberries-support: Ошибка %s при создании/обновлении чата поддержки', $handle),
+                        [
+                            self::class.':'.__LINE__,
+                            $message->getProfile(),
+                            $SupportDTO->getInvariable()?->getTicket(),
+                        ],
+                    );
                 }
+
 
                 $Deduplicator->save();
             }

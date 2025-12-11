@@ -28,6 +28,7 @@ namespace BaksDev\Wildberries\Support\Messenger\Schedules\GetWbChatsMessages;
 use BaksDev\Core\Deduplicator\DeduplicatorInterface;
 use BaksDev\Support\Entity\Event\SupportEvent;
 use BaksDev\Support\Entity\Support;
+use BaksDev\Support\Repository\FindExistMessage\FindExistExternalMessageByIdInterface;
 use BaksDev\Support\Repository\SupportCurrentEventByTicket\CurrentSupportEventByTicketInterface;
 use BaksDev\Support\Type\Priority\SupportPriority;
 use BaksDev\Support\Type\Priority\SupportPriority\Collection\SupportPriorityLow;
@@ -63,6 +64,7 @@ final class GetWbCustomerMessageChatDispatcher
         private readonly GetWbChatsMessagesRequest $chatsMessagesRequest,
         private readonly CurrentSupportEventByTicketInterface $CurrentSupportEventByTicketRepository,
         private readonly AllWbTokensByProfileInterface $AllWbTokensByProfileRepository,
+        private readonly FindExistExternalMessageByIdInterface $FindExistExternalMessageByIdRepository,
         private readonly SupportHandler $supportHandler,
     ) {}
 
@@ -131,6 +133,17 @@ final class GetWbCustomerMessageChatDispatcher
                     continue;
                 }
 
+                /** Если такое сообщение уже есть в БД, то пропускаем */
+                $messageExist = $this->FindExistExternalMessageByIdRepository
+                    ->external($WbChatMessageDTO->getId())
+                    ->exist();
+
+                if($messageExist)
+                {
+                    $Deduplicator->save();
+                    continue;
+                }
+
                 $ticket = $WbChatMessageDTO->getChatId();
 
                 /**
@@ -141,6 +154,7 @@ final class GetWbCustomerMessageChatDispatcher
                 /** Присваиваем токен для последующего ответа */
                 $SupportDTO->getToken()->setValue($WbTokenUid);
 
+                // при добавлении нового сообщения открываем чат заново
                 $SupportDTO
                     ->setPriority(new SupportPriority(SupportPriorityLow::class))
                     ->setStatus(new SupportStatus(SupportStatusOpen::class));
@@ -159,7 +173,7 @@ final class GetWbCustomerMessageChatDispatcher
                     ->forTicket($ticket)
                     ->find();
 
-                /** Пересохраняем событие с новыми данными */
+                /** Пересохраняем событие с новыми данными если тикет существует */
                 false === ($support instanceof SupportEvent) ?: $support->getDto($SupportDTO);
 
                 /** Устанавливаем заголовок чата - выполнится только один раз при создании чата */
@@ -201,10 +215,7 @@ final class GetWbCustomerMessageChatDispatcher
                         ->setInMessage();
                 }
 
-                // при добавлении нового сообщения открываем чат заново
-                $SupportDTO
-                    ->setStatus(new SupportStatus(SupportStatusOpen::class))
-                    ->addMessage($supportMessageDTO);
+                $SupportDTO->addMessage($supportMessageDTO);
 
                 $this->isAddMessage ?: $this->isAddMessage = true;
 

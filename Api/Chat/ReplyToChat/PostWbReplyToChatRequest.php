@@ -54,6 +54,7 @@ final class PostWbReplyToChatRequest extends Wildberries
 
     /**
      * Метод отправляет сообщения в чат с покупателем
+     *
      * @see https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Chat-s-pokupatelyami/paths/~1api~1v1~1seller~1message/post
      */
     public function sendMessage(): bool
@@ -63,8 +64,6 @@ final class PostWbReplyToChatRequest extends Wildberries
         {
             return false;
         }
-
-        $url = 'api/v1/seller/message';
 
         $data = [
             "replySign" => $this->replySign,
@@ -76,8 +75,8 @@ final class PostWbReplyToChatRequest extends Wildberries
             ->TokenHttpClient()
             ->request(
                 method: 'POST',
-                url: $url,
-                options: ["form-data" => $data]
+                url: 'api/v1/seller/message',
+                options: ["body" => $data],
             );
 
         $content = $response->getContent(false);
@@ -85,11 +84,9 @@ final class PostWbReplyToChatRequest extends Wildberries
         if($response->getStatusCode() !== 200)
         {
             $this->logger->critical(
-                sprintf('wildberries-support: Ошибка отправки ответа на отзыв'),
-                [
-                    $content,
-                    self::class.':'.__LINE__,
-                ]);
+                sprintf('wildberries-support: Ошибка %s отправки ответа на отзыв', $response->getStatusCode()),
+                [$content, $data, self::class.':'.__LINE__,],
+            );
 
             return false;
         }
