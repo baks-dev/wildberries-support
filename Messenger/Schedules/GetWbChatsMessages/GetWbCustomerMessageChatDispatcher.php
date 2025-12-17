@@ -146,44 +146,48 @@ final class GetWbCustomerMessageChatDispatcher
 
                 $ticket = $WbChatMessageDTO->getChatId();
 
-                /**
-                 * SupportEvent
-                 */
-                $SupportDTO = new SupportDTO();
 
-                /** Присваиваем токен для последующего ответа */
-                $SupportDTO->getToken()->setValue($WbTokenUid);
-
-                // при добавлении нового сообщения открываем чат заново
-                $SupportDTO
-                    ->setPriority(new SupportPriority(SupportPriorityLow::class))
-                    ->setStatus(new SupportStatus(SupportStatusOpen::class));
-
-                /**
-                 * SupportInvariable
-                 */
-                $supportInvariableDTO = new SupportInvariableDTO();
-                $supportInvariableDTO
-                    ->setProfile($message->getProfile())
-                    ->setType(new TypeProfileUid(WbChatProfileType::TYPE))
-                    ->setTicket($ticket);
-
-                // текущее событие чата по идентификатору чата (тикета) из Wb
-                $support = $this->CurrentSupportEventByTicketRepository
+                /** Если такой тикет уже существует в БД, то присваиваем в переменную $SupportEvent */
+                $SupportEvent = $this->CurrentSupportEventByTicketRepository
                     ->forTicket($ticket)
                     ->find();
 
-                /** Пересохраняем событие с новыми данными если тикет существует */
-                false === ($support instanceof SupportEvent) ?: $support->getDto($SupportDTO);
 
-                /** Устанавливаем заголовок чата - выполнится только один раз при создании чата */
-                if(false === $support)
+                $SupportDTO = true === ($SupportEvent instanceof SupportEvent)
+                    ? $SupportEvent->getDto(SupportDTO::class)
+                    : new SupportDTO(); // done
+
+                /** Присваиваем значения по умолчанию для нового тикета */
+                if(false === ($SupportEvent instanceof SupportEvent))
                 {
+                    /**
+                     * SupportInvariable
+                     */
+                    $supportInvariableDTO = new SupportInvariableDTO();
+                    $supportInvariableDTO
+                        //->setProfile($message->getProfile())
+                        ->setType(new TypeProfileUid(WbChatProfileType::TYPE))
+                        ->setTicket($ticket);
+
+
+                    /** Устанавливаем заголовок чата */
                     $title = $WbChatMessageDTO->getText() ? mb_strimwidth($WbChatMessageDTO->getText(), 0, 255) : "Без темы";
                     $supportInvariableDTO->setTitle($title);
+
+                    $SupportDTO->setInvariable($supportInvariableDTO);
+
+                    /** Присваиваем токен для последующего ответа */
+                    $SupportDTO->getToken()->setValue($WbTokenUid);
+
+
+                    /** @TODO: Отсылаем автоматически вопрос с уточнением номера заказа */
+
                 }
 
-                $SupportDTO->setInvariable($supportInvariableDTO);
+
+                // при добавлении нового сообщения открываем чат заново
+                $SupportDTO->setStatus(new SupportStatus(SupportStatusOpen::class));
+
 
                 // подготовка DTO для нового сообщения
                 $supportMessageDTO = new SupportMessageDTO();
@@ -217,25 +221,21 @@ final class GetWbCustomerMessageChatDispatcher
 
                 $SupportDTO->addMessage($supportMessageDTO);
 
-                $this->isAddMessage ?: $this->isAddMessage = true;
 
-                /** Сохраняем, если имеются новые сообщения в массиве */
-                if(true === $this->isAddMessage)
+                $handle = $this->supportHandler->handle($SupportDTO);
+
+                if(false === $handle instanceof Support)
                 {
-                    $handle = $this->supportHandler->handle($SupportDTO);
-
-                    if(false === $handle instanceof Support)
-                    {
-                        $this->logger->critical(
-                            sprintf('wildberries-support: Ошибка %s при создании/обновлении чата поддержки', $handle),
-                            [
-                                self::class.':'.__LINE__,
-                                $message->getProfile(),
-                                $SupportDTO->getInvariable()?->getTicket(),
-                            ],
-                        );
-                    }
+                    $this->logger->critical(
+                        sprintf('wildberries-support: Ошибка %s при создании/обновлении чата поддержки', $handle),
+                        [
+                            self::class.':'.__LINE__,
+                            $message->getProfile(),
+                            $SupportDTO->getInvariable()?->getTicket(),
+                        ],
+                    );
                 }
+
 
                 $Deduplicator->save();
             }

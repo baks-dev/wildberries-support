@@ -171,7 +171,7 @@ final class GetWbQuestionsDispatcher
 
                 /** SupportInvariable */
                 $supportInvariableDTO = new SupportInvariableDTO()
-                    ->setProfile($message->getProfile())
+                    //->setProfile($message->getProfile())
                     ->setType(new TypeProfileUid(WbQuestionProfileType::TYPE))
                     ->setTicket($ticket);
 
