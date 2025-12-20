@@ -125,7 +125,7 @@ final class GetWbCustomerMessageChatDispatcher
 
                 if($Deduplicator->isExecuted())
                 {
-                    return;
+                    continue;
                 }
 
                 if(empty($WbChatMessageDTO->getData()))
