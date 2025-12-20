@@ -113,6 +113,11 @@ final class GetWbChatsMessagesRequest extends Wildberries
                     continue;
                 }
 
+                if($chat['sender'] === 'seller')
+                {
+                    continue;
+                }
+
                 yield new WbChatMessageDTO($chat);
             }
 
