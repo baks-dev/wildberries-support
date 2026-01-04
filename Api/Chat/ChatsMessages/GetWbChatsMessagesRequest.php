@@ -99,7 +99,7 @@ final class GetWbChatsMessagesRequest extends Wildberries
                 return $content;
             });
 
-            if(count($content['result']['events']) === 0)
+            if(empty($content['result']['events']))
             {
                 break;
             }
