@@ -26,6 +26,12 @@ declare(strict_types=1);
 namespace BaksDev\Wildberries\Support\Messenger\Schedules\GetWbChatsMessages;
 
 use BaksDev\Core\Deduplicator\DeduplicatorInterface;
+use BaksDev\Core\Twig\CallTwigFuncExtension;
+use BaksDev\Products\Product\Repository\CurrentProductByArticle\CurrentProductByBarcodeResult;
+use BaksDev\Products\Product\Repository\CurrentProductByArticle\ProductConstByArticleInterface;
+use BaksDev\Products\Product\Repository\CurrentProductIdentifier\CurrentProductIdentifierResult;
+use BaksDev\Products\Product\Repository\ProductDetail\ProductDetailByConstInterface;
+use BaksDev\Products\Product\Repository\ProductDetail\ProductDetailByConstResult;
 use BaksDev\Support\Entity\Event\SupportEvent;
 use BaksDev\Support\Entity\Support;
 use BaksDev\Support\Repository\FindExistMessage\FindExistExternalMessageByIdInterface;
@@ -39,6 +45,8 @@ use BaksDev\Support\UseCase\Admin\New\Message\SupportMessageDTO;
 use BaksDev\Support\UseCase\Admin\New\SupportDTO;
 use BaksDev\Support\UseCase\Admin\New\SupportHandler;
 use BaksDev\Users\Profile\TypeProfile\Type\Id\TypeProfileUid;
+use BaksDev\Wildberries\Products\Api\Cards\FindAllWildberriesCardsRequest;
+use BaksDev\Wildberries\Products\Api\Cards\WildberriesCardDTO;
 use BaksDev\Wildberries\Repository\AllWbTokensByProfile\AllWbTokensByProfileInterface;
 use BaksDev\Wildberries\Support\Api\Chat\ChatsMessages\GetWbChatsMessagesRequest;
 use BaksDev\Wildberries\Support\Schedule\WbNewReview\FindProfileForCreateWbReviewSchedule;
@@ -49,6 +57,7 @@ use DateTimeZone;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Twig\Environment;
 
 /**
  * Получает новые сообщения из чатов с покупателями WB
@@ -66,6 +75,10 @@ final class GetWbCustomerMessageChatDispatcher
         private readonly AllWbTokensByProfileInterface $AllWbTokensByProfileRepository,
         private readonly FindExistExternalMessageByIdInterface $FindExistExternalMessageByIdRepository,
         private readonly SupportHandler $supportHandler,
+        private readonly FindAllWildberriesCardsRequest $FindAllWildberriesCardsRequest,
+        private readonly ProductConstByArticleInterface $ProductConstByArticleRepository,
+        private readonly ProductDetailByConstInterface $ProductDetailByConstRepository,
+        private Environment $environment,
     ) {}
 
     public function __invoke(GetWbCustomerMessageChatMessage $message): void
@@ -170,8 +183,95 @@ final class GetWbCustomerMessageChatDispatcher
                         ->setTicket($ticket);
 
 
-                    /** Устанавливаем заголовок чата */
+                    /** Устанавливаем по умолчанию заголовок чата из сообщения */
                     $title = $WbChatMessageDTO->getText() ? mb_strimwidth($WbChatMessageDTO->getText(), 0, 255) : "Без темы";
+
+                    /**
+                     * Если в тикеете имеется идентификатор номенклатуры - пробуем определить карточку товара для заголовка
+                     */
+
+                    if($WbChatMessageDTO->getNomenclature())
+                    {
+                        $result = $this->FindAllWildberriesCardsRequest
+                            ->forTokenIdentifier($WbTokenUid)
+                            ->findAll($WbChatMessageDTO->getNomenclature());
+
+                        /** Получаем информацию о системном продукте */
+                        if(false !== $result && false !== $result->valid())
+                        {
+                            /** @var WildberriesCardDTO $WildberriesCardDTO */
+                            $WildberriesCardDTO = $result->current();
+
+                            $CurrentProductByBarcodeResult = $this->ProductConstByArticleRepository
+                                ->find($WildberriesCardDTO->getArticle());
+
+                            if($CurrentProductByBarcodeResult instanceof CurrentProductByBarcodeResult)
+                            {
+                                $ProductDetailByConstResult = $this->ProductDetailByConstRepository
+                                    ->product($CurrentProductByBarcodeResult->getProduct())
+                                    ->offerConst($CurrentProductByBarcodeResult->getOfferConst())
+                                    ->variationConst($CurrentProductByBarcodeResult->getVariationConst())
+                                    ->modificationConst($CurrentProductByBarcodeResult->getModificationConst())
+                                    ->findResult();
+
+                                if($ProductDetailByConstResult instanceof ProductDetailByConstResult)
+                                {
+                                    $call = $this->environment->getExtension(CallTwigFuncExtension::class);
+
+                                    $title = $ProductDetailByConstResult->getProductName();
+
+                                    /**
+                                     * Множественный вариант
+                                     */
+
+                                    $variation = $call->call(
+                                        $this->environment,
+                                        $ProductDetailByConstResult->getProductVariationValue(),
+                                        $ProductDetailByConstResult->getProductVariationReference().'_render',
+                                    );
+
+                                    $title .= $variation ? ' '.trim($variation) : '';
+
+
+                                    /**
+                                     * Модификация множественного варианта
+                                     */
+
+                                    $modification = $call->call(
+                                        $this->environment,
+                                        $ProductDetailByConstResult->getProductModificationValue(),
+                                        $ProductDetailByConstResult->getProductModificationReference().'_render',
+                                    );
+
+                                    $title .= $modification ? trim($modification) : '';
+
+                                    /**
+                                     * Торговое предложение
+                                     */
+
+                                    $offer = $call->call(
+                                        $this->environment,
+                                        $ProductDetailByConstResult->getProductOfferValue(),
+                                        $ProductDetailByConstResult->getProductOfferReference().'_render',
+                                    );
+
+                                    $title .= $modification ? ' '.trim($offer) : '';
+
+                                    $title .= $ProductDetailByConstResult->getProductOfferPostfix()
+                                        ? ' '.$ProductDetailByConstResult->getProductOfferPostfix() : '';
+
+                                    $title .= $ProductDetailByConstResult->getProductVariationPostfix()
+                                        ? ' '.$ProductDetailByConstResult->getProductVariationPostfix() : '';
+
+                                    $title .= $ProductDetailByConstResult->getProductModificationPostfix()
+                                        ? ' '.$ProductDetailByConstResult->getProductModificationPostfix() : '';
+                                }
+
+                            }
+                        }
+                    }
+
+                    /** Присваиваем заголовок тикета */
                     $supportInvariableDTO->setTitle($title);
 
                     $SupportDTO->setInvariable($supportInvariableDTO);
@@ -183,7 +283,6 @@ final class GetWbCustomerMessageChatDispatcher
                     /** @TODO: Отсылаем автоматически вопрос с уточнением номера заказа */
 
                 }
-
 
                 // при добавлении нового сообщения открываем чат заново
                 $SupportDTO->setStatus(new SupportStatus(SupportStatusOpen::class));

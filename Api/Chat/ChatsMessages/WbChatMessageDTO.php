@@ -40,6 +40,9 @@ final class WbChatMessageDTO
     /** Идентификатор участника чата. */
     private string|false $userId;
 
+    /** Идентификатор продукта в селлере */
+    private int|false $nomenclature;
+
     /** Тип участника чата: client, seller или wb */
     private string $userType;
 
@@ -65,6 +68,7 @@ final class WbChatMessageDTO
         $this->userId = isset($data['clientID']) ? $data['clientID'] : false;
         $this->userType = (string) $data['sender'];
         $this->userName = $data['clientName'] ?? '';
+        $this->nomenclature = $data['message']['attachments']['goodCard'] ?? false;
 
         $timezone = new DateTimeZone(date_default_timezone_get());
         $this->created = new DateTimeImmutable($data['addTime'])->setTimezone($timezone);
@@ -104,12 +108,18 @@ final class WbChatMessageDTO
         return $this->created;
     }
 
+    public function getNomenclature(): false|int
+    {
+        return $this->nomenclature;
+    }
+
+
     public function formatData(array $data): string
     {
         $formattedData = '';
 
         /** Если прикреплена карточка товара - добавляем ссылку для копирования артикула */
-        if(isset($data['message']['attachments']['goodCard']))
+        /*if(isset($data['message']['attachments']['goodCard']))
         {
             $article = $data['message']['attachments']['goodCard']['nmID'];
             $formattedData .= '<div class="d-flex align-items-center gap-1 text-primary pointer copy small" data-copy="'.$article.'">
@@ -120,7 +130,7 @@ final class WbChatMessageDTO
                 </div>';
 
             $formattedData = str_replace(PHP_EOL, '', $formattedData);
-        }
+        }*/
 
         /** Добавляем текст сообщения */
         if(isset($data['message']['text']))
