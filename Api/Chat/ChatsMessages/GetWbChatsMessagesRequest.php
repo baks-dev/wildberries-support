@@ -108,7 +108,7 @@ final class GetWbChatsMessagesRequest extends Wildberries
             foreach($content['result']['events'] as $chat)
             {
                 /** Пропустить, если сообщение пустое или если тип события - возврат */
-                if(!isset($chat['message']) || $chat['eventType'] === 'refund')
+                if(empty($chat['message']) || $chat['eventType'] === 'refund')
                 {
                     continue;
                 }
