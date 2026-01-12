@@ -68,7 +68,8 @@ final class WbChatMessageDTO
         $this->userId = isset($data['clientID']) ? $data['clientID'] : false;
         $this->userType = (string) $data['sender'];
         $this->userName = $data['clientName'] ?? '';
-        $this->nomenclature = $data['message']['attachments']['goodCard'] ?? false;
+
+        $this->nomenclature = $data['message']['attachments']['goodCard']['nmID'] ?? false;
 
         $timezone = new DateTimeZone(date_default_timezone_get());
         $this->created = new DateTimeImmutable($data['addTime'])->setTimezone($timezone);
