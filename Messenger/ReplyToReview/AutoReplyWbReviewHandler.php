@@ -54,9 +54,8 @@ final readonly class AutoReplyWbReviewHandler
 
     public function __invoke(AutoReplyWbReviewMessage $message): void
     {
-
         $DeduplicatorExecuted = $this->deduplicator
-            ->namespace('wildberries-support')
+            ->namespace('support')
             ->deduplication([$message->getId(), self::class]);
 
         if($DeduplicatorExecuted->isExecuted())
@@ -78,28 +77,30 @@ final readonly class AutoReplyWbReviewHandler
             return;
         }
 
-        /** @var SupportDTO $SupportDTO */
-        $SupportDTO = $supportEvent->getDto(SupportDTO::class);
-
-        // обрабатываем только на открытый тикет
-        if(false === ($SupportDTO->getStatus()->getSupportStatus() instanceof SupportStatusOpen))
-        {
-            return;
-        }
-
-        $supportInvariableDTO = $SupportDTO->getInvariable();
-
-        if(is_null($supportInvariableDTO))
-        {
-            return;
-        }
-
         /**
          * Пропускаем если тикет не является Wildberries Support Review «Отзыв»
          */
-        $supportProfileType = $supportInvariableDTO->getType();
+        if(false === $supportEvent->isTypeEquals(WbReviewProfileType::TYPE))
+        {
+            $DeduplicatorExecuted->save();
+            return;
+        }
 
-        if(false === $supportProfileType->equals(WbReviewProfileType::TYPE))
+
+        /**
+         * Ответ только на ОТКРЫТЫЙ тикет
+         */
+        if(false === ($supportEvent->isStatusEquals(SupportStatusOpen::class)))
+        {
+            return;
+        }
+
+
+        /** @var SupportDTO $SupportDTO */
+        $SupportDTO = $supportEvent->getDto(SupportDTO::class);
+        $supportInvariableDTO = $SupportDTO->getInvariable();
+
+        if(is_null($supportInvariableDTO))
         {
             return;
         }

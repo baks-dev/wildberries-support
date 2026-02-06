@@ -25,6 +25,7 @@ declare(strict_types=1);
 
 namespace BaksDev\Wildberries\Support\Messenger\ReplyToQuestion;
 
+use BaksDev\Core\Deduplicator\DeduplicatorInterface;
 use BaksDev\Core\Messenger\MessageDelay;
 use BaksDev\Core\Messenger\MessageDispatchInterface;
 use BaksDev\Support\Messenger\SupportMessage;
@@ -48,6 +49,7 @@ final readonly class SendWbReplyToQuestionDispatcher
         private MessageDispatchInterface $messageDispatch,
         private CurrentSupportEventInterface $CurrentSupportEventRepository,
         private PostWbReplyToQuestionRequest $postWbReplyToQuestionRequest,
+        private DeduplicatorInterface $deduplicator,
     ) {}
 
     /**
@@ -60,6 +62,15 @@ final readonly class SendWbReplyToQuestionDispatcher
 
     public function __invoke(SupportMessage $message): void
     {
+
+        $Deduplicator = $this->deduplicator
+            ->namespace('support')
+            ->deduplication([$message->getId(), self::class]);
+
+        if($Deduplicator->isExecuted())
+        {
+            return;
+        }
 
         $SupportEvent = $this->CurrentSupportEventRepository
             ->forSupport($message->getId())
@@ -75,6 +86,23 @@ final readonly class SendWbReplyToQuestionDispatcher
             return;
         }
 
+        /**
+         * Пропускаем если тикет не является Wildberries Support Question «Вопрос»
+         */
+        if(false === $SupportEvent->isTypeEquals(WbQuestionProfileType::TYPE))
+        {
+            $Deduplicator->save();
+            return;
+        }
+
+        /**
+         * Ответ только на закрытый тикет
+         */
+        if(false === ($SupportEvent->isStatusEquals(SupportStatusClose::class)))
+        {
+            return;
+        }
+
         /** @var SupportDTO $SupportDTO */
         $SupportDTO = $SupportEvent->getDto(SupportDTO::class);
         $SupportInvariableDTO = $SupportDTO->getInvariable();
@@ -84,23 +112,6 @@ final readonly class SendWbReplyToQuestionDispatcher
             return;
         }
 
-        /**
-         * Ответ только на закрытый тикет
-         */
-        if(false === $SupportDTO->getStatus()->equals(SupportStatusClose::class))
-        {
-            return;
-        }
-
-        /**
-         * Пропускаем если тикет не является Wildberries Support Question «Вопрос»
-         */
-        $typeProfile = $SupportInvariableDTO->getType();
-
-        if(false === $typeProfile->equals(WbQuestionProfileType::TYPE))
-        {
-            return;
-        }
 
         /**
          * Первое сообщение, содержащее идентификатор вопроса

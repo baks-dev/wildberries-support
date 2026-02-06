@@ -25,6 +25,7 @@ declare(strict_types=1);
 
 namespace BaksDev\Wildberries\Support\Messenger\ReplyToChat;
 
+use BaksDev\Core\Deduplicator\DeduplicatorInterface;
 use BaksDev\Core\Messenger\MessageDelay;
 use BaksDev\Core\Messenger\MessageDispatchInterface;
 use BaksDev\Support\Entity\Event\SupportEvent;
@@ -48,6 +49,7 @@ final readonly class SendWbMessageChatDispatcher
         private MessageDispatchInterface $messageDispatch,
         private CurrentSupportEventInterface $CurrentSupportEventRepository,
         private PostWbReplyToChatRequest $sendMessageRequest,
+        private DeduplicatorInterface $deduplicator,
     ) {}
 
     /**
@@ -59,6 +61,16 @@ final readonly class SendWbMessageChatDispatcher
      */
     public function __invoke(SupportMessage $message): void
     {
+
+        $Deduplicator = $this->deduplicator
+            ->namespace('support')
+            ->deduplication([$message->getId(), self::class]);
+
+        if($Deduplicator->isExecuted())
+        {
+            return;
+        }
+
         $SupportEvent = $this->CurrentSupportEventRepository
             ->forSupport($message->getId())
             ->find();
@@ -73,6 +85,25 @@ final readonly class SendWbMessageChatDispatcher
             return;
         }
 
+        /**
+         * Пропускаем если тикет не является Wildberries Support Chat «Чат с покупателем»
+         */
+
+        if(false === $SupportEvent->isTypeEquals(WbChatProfileType::TYPE))
+        {
+            $Deduplicator->save();
+            return;
+        }
+
+        /**
+         * Ответ только на закрытый тикет
+         */
+        if(false === ($SupportEvent->isStatusEquals(SupportStatusClose::class)))
+        {
+            return;
+        }
+
+
         /** @var SupportDTO $SupportDTO */
         $SupportDTO = $SupportEvent->getDto(SupportDTO::class);
         $SupportInvariableDTO = $SupportDTO->getInvariable();
@@ -82,23 +113,6 @@ final readonly class SendWbMessageChatDispatcher
             return;
         }
 
-        /**
-         * Ответ только на закрытый тикет
-         */
-        if(false === $SupportDTO->getStatus()->equals(SupportStatusClose::class))
-        {
-            return;
-        }
-
-        /**
-         * Пропускаем если тикет не является Wildberries Support Chat «Чат с покупателем»
-         */
-        $typeProfile = $SupportInvariableDTO->getType();
-
-        if(false === $typeProfile->equals(WbChatProfileType::TYPE))
-        {
-            return;
-        }
 
         /** @var SupportMessageDTO $firstMessage */
         $firstMessage = $SupportDTO->getMessages()->first();

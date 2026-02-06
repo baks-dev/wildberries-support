@@ -25,6 +25,7 @@ declare(strict_types=1);
 
 namespace BaksDev\Wildberries\Support\Messenger\ReplyToReview;
 
+use BaksDev\Core\Deduplicator\DeduplicatorInterface;
 use BaksDev\Core\Messenger\MessageDelay;
 use BaksDev\Core\Messenger\MessageDispatchInterface;
 use BaksDev\Support\Entity\Event\SupportEvent;
@@ -50,6 +51,7 @@ final readonly class SendWbReplyToReviewDispatcher
         private MessageDispatchInterface $messageDispatch,
         private CurrentSupportEventInterface $CurrentSupportEventRepository,
         private PostWbReplyToReviewRequest $sendMessageRequest,
+        private DeduplicatorInterface $deduplicator,
     ) {}
 
     /**
@@ -62,6 +64,17 @@ final readonly class SendWbReplyToReviewDispatcher
 
     public function __invoke(SupportMessage $message): void
     {
+
+        $Deduplicator = $this->deduplicator
+            ->namespace('support')
+            ->deduplication([$message->getId(), self::class]);
+
+        if($Deduplicator->isExecuted())
+        {
+            return;
+        }
+
+
         $SupportEvent = $this->CurrentSupportEventRepository
             ->forSupport($message->getId())
             ->find();
@@ -77,12 +90,19 @@ final readonly class SendWbReplyToReviewDispatcher
         }
 
         /**
+         * Пропускаем если тикет не является Wildberries Support Review «Отзыв»
+         */
+        if(false === $SupportEvent->isTypeEquals(WbReviewProfileType::TYPE))
+        {
+            $Deduplicator->save();
+            return;
+        }
+
+        /**
          * Ответ только на закрытый тикет
          */
         if(false === ($SupportEvent->isStatusEquals(SupportStatusClose::class)))
         {
-            $this->logger->debug(sprintf('Тикет %s не получил ответ на отзыв', $SupportEvent->getId()));
-
             return;
         }
 
@@ -97,17 +117,6 @@ final readonly class SendWbReplyToReviewDispatcher
 
             return;
         }
-
-        /**
-         * Пропускаем если тикет не является Wildberries Support Review «Отзыв»
-         */
-        $typeProfile = $SupportInvariableDTO->getType();
-
-        if(false === $typeProfile->equals(WbReviewProfileType::TYPE))
-        {
-            return;
-        }
-
 
         /** @var SupportMessageDTO $lastMessage */
         $lastMessage = $SupportDTO->getMessages()->last();
