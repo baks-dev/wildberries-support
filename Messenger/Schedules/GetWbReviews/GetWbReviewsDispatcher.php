@@ -150,7 +150,8 @@ final readonly class GetWbReviewsDispatcher
                     ->setStatus(new SupportStatus(SupportStatusOpen::class));
 
                 /** Присваиваем рейтинг */
-                $SupportDTO->getRating()->setValue($WbReviewMessageDTO->getValuation());
+                $reviewRating = $WbReviewMessageDTO->getValuation();
+                $SupportDTO->getRating()->setValue($reviewRating);
 
                 /**
                  * SupportInvariable
@@ -226,10 +227,8 @@ final readonly class GetWbReviewsDispatcher
                  * - отвечает контент менеджер
                  */
 
-
                 if($reviewRating === 5 || empty($WbReviewMessageDTO->getIsText()))
                 {
-                    /** @var Support $handle */
                     $this->messageDispatch->dispatch(
                         message: new AutoReplyWbReviewMessage($handle->getId(), $reviewRating),
                         stamps: [new MessageDelay(FindProfileForCreateWbReviewSchedule::INTERVAL)],
