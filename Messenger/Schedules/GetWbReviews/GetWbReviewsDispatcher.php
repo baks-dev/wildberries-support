@@ -112,7 +112,7 @@ final readonly class GetWbReviewsDispatcher
 
                 if($Deduplicator->isExecuted())
                 {
-                    return;
+                    continue;
                 }
 
                 if(empty($WbReviewMessageDTO->getData()))
@@ -149,6 +149,8 @@ final readonly class GetWbReviewsDispatcher
                     ->setPriority(new SupportPriority(SupportPriorityLow::class))
                     ->setStatus(new SupportStatus(SupportStatusOpen::class));
 
+                /** Присваиваем рейтинг */
+                $SupportDTO->getRating()->setValue($WbReviewMessageDTO->getValuation());
 
                 /**
                  * SupportInvariable
@@ -224,7 +226,6 @@ final readonly class GetWbReviewsDispatcher
                  * - отвечает контент менеджер
                  */
 
-                $reviewRating = $WbReviewMessageDTO->getValuation();
 
                 if($reviewRating === 5 || empty($WbReviewMessageDTO->getIsText()))
                 {
