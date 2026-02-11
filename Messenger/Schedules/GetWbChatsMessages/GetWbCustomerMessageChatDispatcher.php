@@ -121,6 +121,15 @@ final class GetWbCustomerMessageChatDispatcher
 
         foreach($tokensByProfile as $WbTokenUid)
         {
+            $isSales = $this->chatsMessagesRequest
+                ->forTokenIdentifier($WbTokenUid)
+                ->isSales();
+
+            if(false === $isSales)
+            {
+                continue;
+            }
+
             $messagesChat = $this->chatsMessagesRequest
                 ->forTokenIdentifier($WbTokenUid)
                 ->findAll();
