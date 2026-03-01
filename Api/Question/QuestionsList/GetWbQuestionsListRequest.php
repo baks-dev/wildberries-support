@@ -29,8 +29,10 @@ use BaksDev\Wildberries\Api\Wildberries;
 use BaksDev\Wildberries\Support\Schedule\WbNewQuestion\FindProfileForCreateWbQuestionSchedule;
 use DateInterval;
 use Generator;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Contracts\Cache\ItemInterface;
 
+#[Autoconfigure(public: true)]
 final class GetWbQuestionsListRequest extends Wildberries
 {
     private int|false $from = false;

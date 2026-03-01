@@ -27,6 +27,7 @@ namespace BaksDev\Wildberries\Support\Api\Review\ReviewsList;
 
 use BaksDev\Wildberries\Api\Wildberries;
 use Generator;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Contracts\Cache\ItemInterface;
 
 /*
@@ -38,6 +39,7 @@ use Symfony\Contracts\Cache\ItemInterface;
  * https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Otzyvy/paths/~1api~1v1~1feedbacks/get
  */
 
+#[Autoconfigure(public: true)]
 final class GetWbReviewsListRequest extends Wildberries
 {
     private int|false $from = false;

@@ -62,7 +62,7 @@ use Twig\Environment;
 /**
  * Получает новые сообщения из чатов с покупателями WB
  */
-#[AsMessageHandler]
+#[AsMessageHandler(priority: 0)]
 final class GetWbCustomerMessageChatDispatcher
 {
     private bool $isAddMessage = false;

@@ -40,7 +40,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * - получаем профили с существующим и активным токеном на Wildberries
  * - бросаем сообщение с id профиля для использования в запросах к api Wildberries
  */
-#[AsMessageHandler]
+#[AsMessageHandler(priority: 0)]
 final readonly class FindProfileForCreateWbReviewHandler
 {
     public function __construct(

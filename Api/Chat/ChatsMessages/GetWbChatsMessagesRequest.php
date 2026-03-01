@@ -29,8 +29,10 @@ use BaksDev\Wildberries\Api\Wildberries;
 use BaksDev\Wildberries\Support\Schedule\WbNewMessage\FindProfileForCreateWbSupportSchedule;
 use DateInterval;
 use Generator;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Contracts\Cache\ItemInterface;
 
+#[Autoconfigure(public: true)]
 final class GetWbChatsMessagesRequest extends Wildberries
 {
     /**
