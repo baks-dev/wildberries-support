@@ -163,9 +163,13 @@ final class WbChatMessageDTO
                 try
                 {
                     $content = file_get_contents($imageSrc);
-                    $content = base64_encode($content);
 
-                    $formattedData .= '<a href="'.$imageSrc.'" target="_blank"><img src="data:image/'.$extension.';base64,'.$content.'" style="max-width: 100px;"></a>';
+                    if($content)
+                    {
+                        $content = base64_encode($content);
+                        $formattedData .= '<a href="'.$imageSrc.'" target="_blank"><img src="data:image/'.$extension.';base64,'.$content.'" style="max-width: 100px;"></a>';
+                    }
+
                 }
                 catch(Exception)
                 {
