@@ -39,7 +39,7 @@ use Symfony\Contracts\Cache\ItemInterface;
  * https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Otzyvy/paths/~1api~1v1~1feedbacks/get
  */
 
-#[Autoconfigure(public: true)]
+// #[Autoconfigure(public: true)]
 final class GetWbReviewsListRequest extends Wildberries
 {
     private int|false $from = false;
