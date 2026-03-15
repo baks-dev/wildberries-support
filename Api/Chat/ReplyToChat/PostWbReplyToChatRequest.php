@@ -75,8 +75,8 @@ final class PostWbReplyToChatRequest extends Wildberries
             ->TokenHttpClient()
             ->request(
                 method: 'POST',
-                url: 'api/v1/seller/message',
-                options: ["body" => $data],
+                url: '/api/v1/seller/message',
+                options: $data,
             );
 
         $content = $response->getContent(false);

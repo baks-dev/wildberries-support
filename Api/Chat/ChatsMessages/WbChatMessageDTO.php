@@ -59,7 +59,10 @@ final class WbChatMessageDTO
     private string|false $text;
 
     /** Является ли первым сообщением в чате  */
-    private bool $isNewChat = false;
+    private bool $isNewChat;
+
+    /** Идентификатор заказа */
+    private string|false $order;
 
     public function __construct(array $data)
     {
@@ -70,6 +73,7 @@ final class WbChatMessageDTO
         $this->userName = $data['clientName'] ?? '';
 
         $this->nomenclature = $data['message']['attachments']['goodCard']['nmID'] ?? false;
+        $this->order = $data['message']['attachments']['goodCard']['rid'] ?? false;
 
         $timezone = new DateTimeZone(date_default_timezone_get());
         $this->created = new DateTimeImmutable($data['addTime'])->setTimezone($timezone);
@@ -193,5 +197,10 @@ final class WbChatMessageDTO
     public function getText(): string|bool
     {
         return $this->text;
+    }
+
+    public function getOrder(): false|string
+    {
+        return $this->order;
     }
 }

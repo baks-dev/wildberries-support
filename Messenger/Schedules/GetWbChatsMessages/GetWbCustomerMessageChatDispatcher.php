@@ -27,6 +27,7 @@ namespace BaksDev\Wildberries\Support\Messenger\Schedules\GetWbChatsMessages;
 
 use BaksDev\Core\Deduplicator\DeduplicatorInterface;
 use BaksDev\Core\Twig\CallTwigFuncExtension;
+use BaksDev\Orders\Order\Repository\CurrentOrderNumber\CurrentOrderEventByNumberInterface;
 use BaksDev\Products\Product\Repository\CurrentProductByArticle\CurrentProductByBarcodeResult;
 use BaksDev\Products\Product\Repository\CurrentProductByArticle\ProductConstByArticleInterface;
 use BaksDev\Products\Product\Repository\CurrentProductIdentifier\CurrentProductIdentifierResult;
@@ -78,6 +79,7 @@ final class GetWbCustomerMessageChatDispatcher
         private readonly FindAllWildberriesCardsRequest $FindAllWildberriesCardsRequest,
         private readonly ProductConstByArticleInterface $ProductConstByArticleRepository,
         private readonly ProductDetailByConstInterface $ProductDetailByConstRepository,
+        private readonly CurrentOrderEventByNumberInterface $CurrentOrderEventByNumberRepository,
         private Environment $environment,
     ) {}
 
@@ -185,8 +187,8 @@ final class GetWbCustomerMessageChatDispatcher
                     /**
                      * SupportInvariable
                      */
-                    $supportInvariableDTO = new SupportInvariableDTO();
-                    $supportInvariableDTO
+                    $SupportInvariableDTO = new SupportInvariableDTO();
+                    $SupportInvariableDTO
                         //->setProfile($message->getProfile())
                         ->setType(new TypeProfileUid(WbChatProfileType::TYPE))
                         ->setTicket($ticket);
@@ -195,11 +197,35 @@ final class GetWbCustomerMessageChatDispatcher
                     /** Устанавливаем по умолчанию заголовок чата из сообщения */
                     $title = $WbChatMessageDTO->getText() ? mb_strimwidth($WbChatMessageDTO->getText(), 0, 255) : "Без темы";
 
+
                     /**
-                     * Если в тикеете имеется идентификатор номенклатуры - пробуем определить карточку товара для заголовка
+                     * Если в тикете имеется номер заказа - пробуем определить склад
                      */
 
-                    if($WbChatMessageDTO->getNomenclature())
+                    $isNewTitle = true;
+
+                    if($WbChatMessageDTO->getOrder())
+                    {
+                        $arrOrderEvent = $this->CurrentOrderEventByNumberRepository
+                            ->findAll($WbChatMessageDTO->getOrder());
+
+                        if(false === empty($arrOrderEvent))
+                        {
+                            /** Присваиваем склад для тикета */
+                            $OrderEvent = current($arrOrderEvent);
+                            $SupportInvariableDTO->setProfile($OrderEvent->getOrderProfile()); // Профиль по заказу
+                            $title = sprintf('Заказ #%s', $OrderEvent->getPostingNumber());
+
+                            $isNewTitle = false;
+                        }
+                    }
+
+
+                    /**
+                     * Если номер заказа не определен и в тикете имеется идентификатор номенклатуры - пробуем определить карточку товара для заголовка
+                     */
+
+                    if($isNewTitle && $WbChatMessageDTO->getNomenclature())
                     {
                         $result = $this->FindAllWildberriesCardsRequest
                             ->forTokenIdentifier($WbTokenUid)
@@ -281,9 +307,9 @@ final class GetWbCustomerMessageChatDispatcher
                     }
 
                     /** Присваиваем заголовок тикета */
-                    $supportInvariableDTO->setTitle($title);
+                    $SupportInvariableDTO->setTitle($title);
 
-                    $SupportDTO->setInvariable($supportInvariableDTO);
+                    $SupportDTO->setInvariable($SupportInvariableDTO);
 
                     /** Присваиваем токен для последующего ответа */
                     $SupportDTO->getToken()->setValue($WbTokenUid);

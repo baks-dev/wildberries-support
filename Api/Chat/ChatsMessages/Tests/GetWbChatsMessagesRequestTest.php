@@ -76,9 +76,11 @@ final class GetWbChatsMessagesRequestTest extends KernelTestCase
                     // Вызываем метод
                     $data = $method->invoke($WbChatMessageDTO);
                     //dump($method->getName());
-                    //dump($data);
+                    dump($data);
                 }
             }
+
+            break;
         }
 
         self::assertTrue(true);
