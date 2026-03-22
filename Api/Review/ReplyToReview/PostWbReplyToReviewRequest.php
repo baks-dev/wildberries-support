@@ -54,6 +54,7 @@ final class PostWbReplyToReviewRequest extends Wildberries
 
     /**
      * Метод позволяет ответить на отзыв покупателя.
+     *
      * @see https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Otzyvy/paths/~1api~1v1~1feedbacks~1answer/post
      */
     public function sendMessage(): bool
@@ -77,7 +78,7 @@ final class PostWbReplyToReviewRequest extends Wildberries
             ->request(
                 method: 'POST',
                 url: 'api/v1/feedbacks/answer',
-                options: ["json" => $json]
+                options: ["json" => $json],
             );
 
         if($response->getStatusCode() !== 204)

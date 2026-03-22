@@ -23,29 +23,36 @@
 
 declare(strict_types=1);
 
-namespace BaksDev\Wildberries\Support\Schedule\WbNewQuestion;
+namespace BaksDev\Wildberries\Support\Messenger\ReplyToChat;
 
-use DateInterval;
-use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
+use BaksDev\Support\Type\Id\SupportUid;
+use Symfony\Component\DependencyInjection\Attribute\Exclude;
 
-#[AutoconfigureTag('baks.schedule')]
-final class FindProfileForCreateWbQuestionSchedule
+#[Exclude]
+final readonly class AutoReplyWbChatMessage
 {
-    const string INTERVAL = '1 minutes';
+    private string $id;
 
-    /** Возвращает экземпляр класса сообщения */
-    public function getMessage(): object
+    private int $rating;
+
+    public function __construct(
+        SupportUid $id,
+        int $rating,
+    )
     {
-        return new FindProfileForCreateWbQuestionMessage();
+        $this->id = (string) $id;
+        $this->rating = $rating;
     }
 
-    /**
-     * Интервал повтора
-     *
-     * @see https://www.php.net/manual/en/dateinterval.createfromdatestring.php
-     */
-    public function getInterval(): DateInterval
+    /** Идентификатор main */
+    public function getId(): SupportUid
     {
-        return DateInterval::createFromDateString(self::INTERVAL);
+        return new SupportUid($this->id);
+    }
+
+    /** Рейтинг отзыва */
+    public function getRating(): int
+    {
+        return $this->rating;
     }
 }

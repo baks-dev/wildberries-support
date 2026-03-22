@@ -26,6 +26,8 @@ declare(strict_types=1);
 namespace BaksDev\Wildberries\Support\Messenger\Schedules\GetWbChatsMessages;
 
 use BaksDev\Core\Deduplicator\DeduplicatorInterface;
+use BaksDev\Core\Messenger\MessageDelay;
+use BaksDev\Core\Messenger\MessageDispatchInterface;
 use BaksDev\Core\Twig\CallTwigFuncExtension;
 use BaksDev\Orders\Order\Repository\CurrentOrderNumber\CurrentOrderEventByNumberInterface;
 use BaksDev\Products\Product\Repository\CurrentProductByArticle\CurrentProductByBarcodeResult;
@@ -50,6 +52,7 @@ use BaksDev\Wildberries\Products\Api\Cards\FindAllWildberriesCardsRequest;
 use BaksDev\Wildberries\Products\Api\Cards\WildberriesCardDTO;
 use BaksDev\Wildberries\Repository\AllWbTokensByProfile\AllWbTokensByProfileInterface;
 use BaksDev\Wildberries\Support\Api\Chat\ChatsMessages\GetWbChatsMessagesRequest;
+use BaksDev\Wildberries\Support\Messenger\ReplyToReview\AutoReplyWbReviewMessage;
 use BaksDev\Wildberries\Support\Schedule\WbNewReview\FindProfileForCreateWbReviewSchedule;
 use BaksDev\Wildberries\Support\Type\WbChatProfileType;
 use DateInterval;
@@ -80,6 +83,7 @@ final class GetWbCustomerMessageChatDispatcher
         private readonly ProductConstByArticleInterface $ProductConstByArticleRepository,
         private readonly ProductDetailByConstInterface $ProductDetailByConstRepository,
         private readonly CurrentOrderEventByNumberInterface $CurrentOrderEventByNumberRepository,
+        private readonly MessageDispatchInterface $messageDispatch,
         private Environment $environment,
     ) {}
 
@@ -197,35 +201,11 @@ final class GetWbCustomerMessageChatDispatcher
                     /** Устанавливаем по умолчанию заголовок чата из сообщения */
                     $title = $WbChatMessageDTO->getText() ? mb_strimwidth($WbChatMessageDTO->getText(), 0, 255) : "Без темы";
 
-
-                    /**
-                     * Если в тикете имеется номер заказа - пробуем определить склад
-                     */
-
-                    $isNewTitle = true;
-
-                    if($WbChatMessageDTO->getOrder())
-                    {
-                        $arrOrderEvent = $this->CurrentOrderEventByNumberRepository
-                            ->findAll($WbChatMessageDTO->getOrder());
-
-                        if(false === empty($arrOrderEvent))
-                        {
-                            /** Присваиваем склад для тикета */
-                            $OrderEvent = current($arrOrderEvent);
-                            $SupportInvariableDTO->setProfile($OrderEvent->getOrderProfile()); // Профиль по заказу
-                            $title = sprintf('Заказ #%s', $OrderEvent->getPostingNumber());
-
-                            $isNewTitle = false;
-                        }
-                    }
-
-
                     /**
                      * Если номер заказа не определен и в тикете имеется идентификатор номенклатуры - пробуем определить карточку товара для заголовка
                      */
 
-                    if($isNewTitle && $WbChatMessageDTO->getNomenclature())
+                    if($WbChatMessageDTO->getNomenclature())
                     {
                         $result = $this->FindAllWildberriesCardsRequest
                             ->forTokenIdentifier($WbTokenUid)
@@ -313,10 +293,6 @@ final class GetWbCustomerMessageChatDispatcher
 
                     /** Присваиваем токен для последующего ответа */
                     $SupportDTO->getToken()->setValue($WbTokenUid);
-
-
-                    /** @TODO: Отсылаем автоматически вопрос с уточнением номера заказа */
-
                 }
 
                 // при добавлении нового сообщения открываем чат заново
@@ -368,6 +344,21 @@ final class GetWbCustomerMessageChatDispatcher
                             $SupportDTO->getInvariable()?->getTicket(),
                         ],
                     );
+                }
+
+                /**
+                 * Отсылаем автоматически вопрос с уточнением номера заказа на новый тикет по заказу
+                 */
+                if(false === ($SupportEvent instanceof SupportEvent) && false === empty($WbChatMessageDTO->getOrder()))
+                {
+                    $text = '';
+
+                    $this->messageDispatch->dispatch(
+                        message: new AutoReplyWbReviewMessage($handle->getId(), $reviewRating),
+                        stamps: [new MessageDelay(FindProfileForCreateWbReviewSchedule::INTERVAL)],
+                        transport: 'wildberries-support',
+                    );
+
                 }
 
 

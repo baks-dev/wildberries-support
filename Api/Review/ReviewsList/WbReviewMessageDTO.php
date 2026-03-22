@@ -27,6 +27,7 @@ namespace BaksDev\Wildberries\Support\Api\Review\ReviewsList;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Exception;
 
 final class WbReviewMessageDTO
 {
@@ -72,31 +73,6 @@ final class WbReviewMessageDTO
         $this->title = 'Отзыв к товару '.$data['productDetails']['productName'];
     }
 
-    public function getId(): string
-    {
-        return $this->id;
-    }
-
-    public function getCreated(): ?DateTimeImmutable
-    {
-        return $this->created;
-    }
-
-    public function getText(): string
-    {
-        return $this->text;
-    }
-
-    public function getData(): string
-    {
-        return $this->data;
-    }
-
-    public function getName(): string
-    {
-        return $this->userName;
-    }
-
     public function formatData(array $data): string
     {
         $article = $data['productDetails']['nmId'];
@@ -106,11 +82,11 @@ final class WbReviewMessageDTO
                     </svg>
                     Артикул: '.$article.'
                 </div>';
-        
+
         $formattedData = str_replace(PHP_EOL, '', $formattedData);
-        
+
         $formattedData .= '<p> Оценка товара: '.$this->valuation.'</p>';
-        
+
         if(!empty($data['text']))
         {
             $formattedData .= '<p>'.$data['text'].'</p>';
@@ -132,7 +108,8 @@ final class WbReviewMessageDTO
                 $info = pathinfo($imageSrc);
                 $extension = $info['extension'];
 
-                try {
+                try
+                {
                     $content = file_get_contents($imageSrc);
                     $content = base64_encode($content);
 
@@ -140,7 +117,9 @@ final class WbReviewMessageDTO
                         <img src="data:image/'.$extension.';base64,'.$content.'" style="max-width: 100px;">
                     </a>';
                 }
-                catch(\Exception $e) {}
+                catch(Exception $e)
+                {
+                }
             }
         }
 
@@ -167,6 +146,31 @@ final class WbReviewMessageDTO
         }
 
         return $formattedData;
+    }
+
+    public function getId(): string
+    {
+        return $this->id;
+    }
+
+    public function getCreated(): ?DateTimeImmutable
+    {
+        return $this->created;
+    }
+
+    public function getText(): string
+    {
+        return $this->text;
+    }
+
+    public function getData(): string
+    {
+        return $this->data;
+    }
+
+    public function getName(): string
+    {
+        return $this->userName;
     }
 
     public function getTitle(): string

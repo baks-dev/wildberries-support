@@ -63,7 +63,7 @@ final class PatchWbCheckQuestionViewedRequest extends Wildberries
                 options: ["json" => [
                     'id' => $this->id,
                     'wasViewed' => true,
-                ]]
+                ]],
             );
 
         $content = $response->getContent(false);

@@ -62,8 +62,17 @@ final class GetWbChatsMessagesRequestTest extends KernelTestCase
 
         $result = $wbChatMessagesRequest->findAll();
 
+
         foreach($result as $WbChatMessageDTO)
         {
+
+            dump(' getChatId '.$WbChatMessageDTO->getChatId());
+            dump(' getOrder '.$WbChatMessageDTO->getOrder());
+            dump($WbChatMessageDTO->getId());
+            dump($WbChatMessageDTO->getText());  /* TODO: удалить !!! */
+
+            dump('-----------------------------');  /* TODO: удалить !!! */
+
             // Вызываем все геттеры
             $reflectionClass = new ReflectionClass(WbChatMessageDTO::class);
             $methods = $reflectionClass->getMethods(ReflectionMethod::IS_PUBLIC);
@@ -76,11 +85,11 @@ final class GetWbChatsMessagesRequestTest extends KernelTestCase
                     // Вызываем метод
                     $data = $method->invoke($WbChatMessageDTO);
                     //dump($method->getName());
-                    dump($data);
+                    //dump($data);
                 }
             }
 
-            break;
+            //break;
         }
 
         self::assertTrue(true);

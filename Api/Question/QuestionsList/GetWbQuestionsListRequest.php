@@ -35,9 +35,8 @@ use Symfony\Contracts\Cache\ItemInterface;
 // #[Autoconfigure(public: true)]
 final class GetWbQuestionsListRequest extends Wildberries
 {
-    private int|false $from = false;
-
     const int LIMIT = 10000;
+    private int|false $from = false;
 
     public function from(int $time): self
     {
@@ -85,7 +84,7 @@ final class GetWbQuestionsListRequest extends Wildberries
                         url: 'api/v1/questions',
                         options: [
                             'query' => $query,
-                        ]
+                        ],
                     );
 
                 $content = $response->toArray(false);
@@ -96,7 +95,7 @@ final class GetWbQuestionsListRequest extends Wildberries
                         sprintf('wildberries-support: Ошибка %s получения списка вопросов', $response->getStatusCode()),
                         [
                             self::class.':'.__LINE__,
-                            $content
+                            $content,
                         ]);
 
                     return false;
@@ -104,8 +103,8 @@ final class GetWbQuestionsListRequest extends Wildberries
 
                 $item->expiresAfter(
                     DateInterval::createFromDateString(
-                        FindProfileForCreateWbQuestionSchedule::INTERVAL
-                    )
+                        FindProfileForCreateWbQuestionSchedule::INTERVAL,
+                    ),
                 );
 
                 return $content;

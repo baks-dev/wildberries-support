@@ -53,21 +53,6 @@ final readonly class WbQuestionMessageDTO
 
     }
 
-    public function getId(): string
-    {
-        return $this->id;
-    }
-
-    public function getCreated(): ?DateTimeImmutable
-    {
-        return $this->created;
-    }
-
-    public function getData(): string
-    {
-        return $this->data;
-    }
-
     public function formatData(array $data): string
     {
         $article = $data['productDetails']['nmId'];
@@ -83,6 +68,21 @@ final readonly class WbQuestionMessageDTO
         $formattedData .= $data['text'];
 
         return $formattedData;
+    }
+
+    public function getId(): string
+    {
+        return $this->id;
+    }
+
+    public function getCreated(): ?DateTimeImmutable
+    {
+        return $this->created;
+    }
+
+    public function getData(): string
+    {
+        return $this->data;
     }
 
     public function getTitle(): string

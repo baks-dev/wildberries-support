@@ -36,9 +36,9 @@ final class PostWbReplyToQuestionRequest extends Wildberries
     private string|false $message = false;
 
     /** Статус вопроса:
-    *
-    * none - вопрос отклонён продавцом (такой вопрос не отображается на портале покупателей)
-    * wbRu - ответ предоставлен, вопрос отображается на сайте покупателей. */
+     *
+     * none - вопрос отклонён продавцом (такой вопрос не отображается на портале покупателей)
+     * wbRu - ответ предоставлен, вопрос отображается на сайте покупателей. */
     private string|false $state = false;
 
     /** Идентификатор чата */
@@ -66,6 +66,7 @@ final class PostWbReplyToQuestionRequest extends Wildberries
 
     /**
      * Метод позволяет ответить на вопрос
+     *
      * @see https://dev.wildberries.ru/ru/openapi/user-communication/#tag/Voprosy/paths/~1api~1v1~1questions/patch
      */
     public function sendAnswer(): bool
@@ -92,7 +93,7 @@ final class PostWbReplyToQuestionRequest extends Wildberries
             ->request(
                 method: 'PATCH',
                 url: 'api/v1/questions',
-                options: ["json" => $json]
+                options: ["json" => $json],
             );
 
         $content = $response->getContent(false);

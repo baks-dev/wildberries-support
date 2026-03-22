@@ -83,42 +83,6 @@ final class WbChatMessageDTO
         $this->isNewChat = isset($data['isNewChat']) && $data['isNewChat'];
     }
 
-    public function getId(): string
-    {
-        return $this->id;
-    }
-
-    public function getChatId(): string
-    {
-        return $this->chatId;
-    }
-
-    public function getUserId(): string|false
-    {
-        return $this->userId;
-    }
-
-    public function getUserType(): string
-    {
-        return $this->userType;
-    }
-
-    public function getUserName(): string
-    {
-        return $this->userName;
-    }
-
-    public function getCreated(): ?DateTimeImmutable
-    {
-        return $this->created;
-    }
-
-    public function getNomenclature(): false|int
-    {
-        return $this->nomenclature;
-    }
-
-
     public function formatData(array $data): string
     {
         $formattedData = '';
@@ -182,6 +146,41 @@ final class WbChatMessageDTO
         }
 
         return $formattedData;
+    }
+
+    public function getId(): string
+    {
+        return $this->id;
+    }
+
+    public function getChatId(): string
+    {
+        return $this->chatId;
+    }
+
+    public function getUserId(): string|false
+    {
+        return $this->userId;
+    }
+
+    public function getUserType(): string
+    {
+        return $this->userType;
+    }
+
+    public function getUserName(): string
+    {
+        return $this->userName;
+    }
+
+    public function getCreated(): ?DateTimeImmutable
+    {
+        return $this->created;
+    }
+
+    public function getNomenclature(): false|int
+    {
+        return $this->nomenclature;
     }
 
     public function getData(): string

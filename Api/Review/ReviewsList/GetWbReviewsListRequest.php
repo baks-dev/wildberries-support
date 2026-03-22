@@ -42,9 +42,8 @@ use Symfony\Contracts\Cache\ItemInterface;
 // #[Autoconfigure(public: true)]
 final class GetWbReviewsListRequest extends Wildberries
 {
-    private int|false $from = false;
-
     const int LIMIT = 5000;
+    private int|false $from = false;
 
     public function from(int $time): self
     {

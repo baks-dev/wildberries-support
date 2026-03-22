@@ -1,0 +1,165 @@
+<?php
+/*
+ * Copyright 2025.  Baks.dev <admin@baks.dev>
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the "Software"), to deal
+ *  in the Software without restriction, including without limitation the rights
+ *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *  copies of the Software, and to permit persons to whom the Software is furnished
+ *  to do so, subject to the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be included in all
+ *  copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ *  THE SOFTWARE.
+ */
+
+declare(strict_types=1);
+
+namespace BaksDev\Wildberries\Support\Messenger\ReplyToChat;
+
+use BaksDev\Core\Deduplicator\DeduplicatorInterface;
+use BaksDev\Support\Answer\Service\AutoMessagesReply;
+use BaksDev\Support\Entity\Support;
+use BaksDev\Support\Repository\SupportCurrentEvent\CurrentSupportEventInterface;
+use BaksDev\Support\Repository\SupportCurrentEvent\CurrentSupportEventRepository;
+use BaksDev\Support\Type\Status\SupportStatus;
+use BaksDev\Support\Type\Status\SupportStatus\Collection\SupportStatusClose;
+use BaksDev\Support\Type\Status\SupportStatus\Collection\SupportStatusOpen;
+use BaksDev\Support\UseCase\Admin\New\Message\SupportMessageDTO;
+use BaksDev\Support\UseCase\Admin\New\SupportDTO;
+use BaksDev\Support\UseCase\Admin\New\SupportHandler;
+use BaksDev\Wildberries\Support\Type\WbChatProfileType;
+use DateTimeImmutable;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Target;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+
+#[AsMessageHandler(priority: 0)]
+final readonly class AutoReplyWbChatHandler
+{
+    public function __construct(
+        #[Target('wildberriesSupportLogger')] private LoggerInterface $logger,
+        private CurrentSupportEventInterface $CurrentSupportEventRepository,
+        private SupportHandler $supportHandler,
+        private DeduplicatorInterface $deduplicator
+    ) {}
+
+    public function __invoke(AutoReplyWbChatMessage $message): void
+    {
+        $DeduplicatorExecuted = $this->deduplicator
+            ->namespace('support')
+            ->deduplication([$message->getId(), self::class]);
+
+        if($DeduplicatorExecuted->isExecuted())
+        {
+            return;
+        }
+
+        $supportEvent = $this->CurrentSupportEventRepository
+            ->forSupport($message->getId())
+            ->find();
+
+        if(false === $supportEvent)
+        {
+            $this->logger->critical(
+                'wildberries-support: Ошибка получения события по идентификатору :'.$message->getId(),
+                [self::class.':'.__LINE__],
+            );
+
+            return;
+        }
+
+        /**
+         * Пропускаем если тикет не является Wildberries Support Chat «Чат с покупателем»
+         */
+        if(false === $supportEvent->isTypeEquals(WbChatProfileType::TYPE))
+        {
+            $DeduplicatorExecuted->save();
+            return;
+        }
+
+
+        /**
+         * Ответ только на ОТКРЫТЫЙ тикет
+         */
+        if(false === ($supportEvent->isStatusEquals(SupportStatusOpen::class)))
+        {
+            return;
+        }
+
+
+        /** @var SupportDTO $SupportDTO */
+        $SupportDTO = $supportEvent->getDto(SupportDTO::class);
+        $supportInvariableDTO = $SupportDTO->getInvariable();
+
+        if(is_null($supportInvariableDTO))
+        {
+            return;
+        }
+
+        /** Текст сообщения */
+        $AutoMessagesReply = new AutoMessagesReply();
+        $answerMessage = $AutoMessagesReply->hello();
+
+        /**
+         * Если известно имя клиента - подставляем для приветствия
+         *
+         * @var SupportMessageDTO $currentMessage
+         */
+        $currentMessage = $SupportDTO->getMessages()->current();
+        $clientName = $currentMessage->getName();
+
+        if(false === empty($clientName) && $clientName !== 'Покупатель')
+        {
+            $answerMessage = sprintf('Здравствуйте, %s! ', $clientName).$answerMessage;
+        }
+        else
+        {
+            $answerMessage = 'Здравствуйте! '.$answerMessage;
+        }
+
+
+        $answerMessage .= PHP_EOL.'Пожалуйста, сообщите номер вашего заказа, чтобы мы могли уточнить детали. Спасибо!';
+
+        /** Отправляем сообщение клиенту */
+
+        $supportMessageDTO = new SupportMessageDTO()
+            ->setName('auto (Bot Seller)')
+            ->setMessage($answerMessage)
+            ->setDate(new DateTimeImmutable('now'))
+            ->setOutMessage();
+
+        $SupportDTO
+            ->setStatus(new SupportStatus(SupportStatusClose::class)) // закрываем чат
+            ->addMessage($supportMessageDTO) // добавляем сформированное сообщение
+        ;
+
+        // сохраняем ответ
+        $Support = $this->supportHandler->handle($SupportDTO);
+
+        if(false === ($Support instanceof Support))
+        {
+            $this->logger->critical(
+                'wildberries-support: Ошибка при отправке автоматического ответа на сообщение',
+                [$Support, self::class.':'.__LINE__],
+            );
+
+            return;
+        }
+
+        $this->logger->info(
+            'Отправили автоматический ответ на сообщение с запросом его номера заказа',
+            [$Support, self::class.':'.__LINE__],
+        );
+
+        $DeduplicatorExecuted->save();
+    }
+}
