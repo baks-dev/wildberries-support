@@ -196,7 +196,7 @@ final class WbReviewMessageDTO
         return $this->isText;
     }
 
-    public function getSupplierArticle(): string
+    public function getArticle(): string
     {
         return $this->article;
     }
