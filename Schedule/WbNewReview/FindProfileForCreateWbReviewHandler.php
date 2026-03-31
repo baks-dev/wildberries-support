@@ -71,7 +71,7 @@ final readonly class FindProfileForCreateWbReviewHandler
         {
             $this->messageDispatch->dispatch(
                 message: new GetWbReviewsMessage($profile),
-                stamps: [new MessageDelay('5 seconds')],
+                stamps: [new MessageDelay(FindProfileForCreateWbReviewSchedule::INTERVAL)],
                 transport: (string) $profile,
             );
         }

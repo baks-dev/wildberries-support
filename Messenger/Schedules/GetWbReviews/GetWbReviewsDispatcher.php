@@ -47,6 +47,7 @@ use BaksDev\Wildberries\Support\Api\Review\ReviewsList\GetWbReviewsListRequest;
 use BaksDev\Wildberries\Support\Messenger\ReplyToReview\AutoReplyWbReviewMessage;
 use BaksDev\Wildberries\Support\Schedule\WbNewReview\FindProfileForCreateWbReviewSchedule;
 use BaksDev\Wildberries\Support\Type\WbReviewProfileType;
+use DateInterval;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -71,6 +72,19 @@ final readonly class GetWbReviewsDispatcher
     public function __invoke(GetWbReviewsMessage $message): void
     {
 
+        $DeduplicatorExecuted = $this->deduplicator
+            ->namespace('wildberries-support')
+            ->expiresAfter(DateInterval::createFromDateString(FindProfileForCreateWbReviewSchedule::INTERVAL))
+            ->deduplication([$message->getProfile(), self::class]);
+
+        if($DeduplicatorExecuted->isExecuted())
+        {
+            return;
+        }
+
+        $DeduplicatorExecuted->save();
+
+
         /**
          * Получаем все токены профиля пользователя
          */
@@ -81,6 +95,7 @@ final readonly class GetWbReviewsDispatcher
 
         if(false === $tokensByProfile || false === $tokensByProfile->valid())
         {
+            $DeduplicatorExecuted->delete();
             return;
         }
 
@@ -99,7 +114,7 @@ final readonly class GetWbReviewsDispatcher
 
             if(false === $reviews || false === $reviews->valid())
             {
-                return;
+                continue;
             }
 
 

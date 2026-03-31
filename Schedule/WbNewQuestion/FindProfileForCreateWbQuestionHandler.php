@@ -71,7 +71,7 @@ final readonly class FindProfileForCreateWbQuestionHandler
         {
             $this->messageDispatch->dispatch(
                 message: new GetWbQuestionsMessage($profile),
-                stamps: [new MessageDelay('5 seconds')],
+                stamps: [new MessageDelay(FindProfileForCreateWbQuestionSchedule::INTERVAL)],
                 transport: (string) $profile,
             );
         }

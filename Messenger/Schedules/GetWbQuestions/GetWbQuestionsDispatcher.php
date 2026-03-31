@@ -75,6 +75,19 @@ final class GetWbQuestionsDispatcher
 
     public function __invoke(GetWbQuestionsMessage $message): void
     {
+        $DeduplicatorExecuted = $this->deduplicator
+            ->namespace('wildberries-support')
+            ->expiresAfter(DateInterval::createFromDateString(FindProfileForCreateWbQuestionSchedule::INTERVAL))
+            ->deduplication([$message->getProfile(), self::class]);
+
+        if($DeduplicatorExecuted->isExecuted())
+        {
+            return;
+        }
+
+        $DeduplicatorExecuted->save();
+
+
         /**
          * Ограничиваем лимит сообщений по дате, если вызван диспетчер не из консольной комманды
          *
@@ -105,6 +118,7 @@ final class GetWbQuestionsDispatcher
 
         if(false === $tokensByProfile || false === $tokensByProfile->valid())
         {
+            $DeduplicatorExecuted->delete();
             return;
         }
 
@@ -122,6 +136,7 @@ final class GetWbQuestionsDispatcher
 
             if(false === $questions || false === $questions->valid())
             {
+                $DeduplicatorExecuted->delete();
                 return;
             }
 
@@ -133,7 +148,7 @@ final class GetWbQuestionsDispatcher
 
                 if($Deduplicator->isExecuted())
                 {
-                    return;
+                    continue;
                 }
 
                 if(empty($WbQuestionMessageDTO->getData()))
@@ -230,5 +245,7 @@ final class GetWbQuestionsDispatcher
                 $Deduplicator->save();
             }
         }
+
+        $DeduplicatorExecuted->delete();
     }
 }

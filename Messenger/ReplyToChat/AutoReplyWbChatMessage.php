@@ -33,26 +33,16 @@ final readonly class AutoReplyWbChatMessage
 {
     private string $id;
 
-    private int $rating;
-
     public function __construct(
-        SupportUid $id,
-        int $rating,
+        SupportUid $id
     )
     {
         $this->id = (string) $id;
-        $this->rating = $rating;
     }
 
     /** Идентификатор main */
     public function getId(): SupportUid
     {
         return new SupportUid($this->id);
-    }
-
-    /** Рейтинг отзыва */
-    public function getRating(): int
-    {
-        return $this->rating;
     }
 }

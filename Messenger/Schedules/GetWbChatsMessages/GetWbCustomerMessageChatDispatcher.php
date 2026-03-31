@@ -52,7 +52,8 @@ use BaksDev\Wildberries\Products\Api\Cards\FindAllWildberriesCardsRequest;
 use BaksDev\Wildberries\Products\Api\Cards\WildberriesCardDTO;
 use BaksDev\Wildberries\Repository\AllWbTokensByProfile\AllWbTokensByProfileInterface;
 use BaksDev\Wildberries\Support\Api\Chat\ChatsMessages\GetWbChatsMessagesRequest;
-use BaksDev\Wildberries\Support\Messenger\ReplyToReview\AutoReplyWbReviewMessage;
+use BaksDev\Wildberries\Support\Messenger\ReplyToChat\AutoReplyWbChatMessage;
+use BaksDev\Wildberries\Support\Schedule\WbNewMessage\FindProfileForCreateWbSupportSchedule;
 use BaksDev\Wildberries\Support\Schedule\WbNewReview\FindProfileForCreateWbReviewSchedule;
 use BaksDev\Wildberries\Support\Type\WbChatProfileType;
 use DateInterval;
@@ -82,13 +83,25 @@ final class GetWbCustomerMessageChatDispatcher
         private readonly FindAllWildberriesCardsRequest $FindAllWildberriesCardsRequest,
         private readonly ProductConstByArticleInterface $ProductConstByArticleRepository,
         private readonly ProductDetailByConstInterface $ProductDetailByConstRepository,
-        private readonly CurrentOrderEventByNumberInterface $CurrentOrderEventByNumberRepository,
         private readonly MessageDispatchInterface $messageDispatch,
         private Environment $environment,
     ) {}
 
     public function __invoke(GetWbCustomerMessageChatMessage $message): void
     {
+        $DeduplicatorExecuted = $this->deduplicator
+            ->namespace('wildberries-support')
+            ->expiresAfter(DateInterval::createFromDateString(FindProfileForCreateWbSupportSchedule::INTERVAL))
+            ->deduplication([$message->getProfile(), self::class]);
+
+        if($DeduplicatorExecuted->isExecuted())
+        {
+            return;
+        }
+
+        $DeduplicatorExecuted->save();
+
+
         /**
          * Ограничиваем лимит сообщений по дате, если вызван диспетчер не из консольной комманды
          *
@@ -122,6 +135,7 @@ final class GetWbCustomerMessageChatDispatcher
 
         if(false === $tokensByProfile || false === $tokensByProfile->valid())
         {
+            $DeduplicatorExecuted->delete();
             return;
         }
 
@@ -351,19 +365,18 @@ final class GetWbCustomerMessageChatDispatcher
                  */
                 if(false === ($SupportEvent instanceof SupportEvent) && false === empty($WbChatMessageDTO->getOrder()))
                 {
-                    $text = '';
-
                     $this->messageDispatch->dispatch(
-                        message: new AutoReplyWbReviewMessage($handle->getId(), $reviewRating),
+                        message: new AutoReplyWbChatMessage($handle->getId()),
                         stamps: [new MessageDelay(FindProfileForCreateWbReviewSchedule::INTERVAL)],
                         transport: 'wildberries-support',
                     );
-
                 }
 
 
                 $Deduplicator->save();
             }
         }
+
+        $DeduplicatorExecuted->delete();
     }
 }
