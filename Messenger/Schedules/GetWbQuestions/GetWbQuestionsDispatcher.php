@@ -118,7 +118,6 @@ final class GetWbQuestionsDispatcher
 
         if(false === $tokensByProfile || false === $tokensByProfile->valid())
         {
-            $DeduplicatorExecuted->delete();
             return;
         }
 
@@ -136,8 +135,7 @@ final class GetWbQuestionsDispatcher
 
             if(false === $questions || false === $questions->valid())
             {
-                $DeduplicatorExecuted->delete();
-                return;
+                continue;
             }
 
             foreach($questions as $WbQuestionMessageDTO)
@@ -245,7 +243,5 @@ final class GetWbQuestionsDispatcher
                 $Deduplicator->save();
             }
         }
-
-        $DeduplicatorExecuted->delete();
     }
 }

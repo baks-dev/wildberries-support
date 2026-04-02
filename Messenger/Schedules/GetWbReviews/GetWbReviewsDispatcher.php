@@ -95,7 +95,6 @@ final readonly class GetWbReviewsDispatcher
 
         if(false === $tokensByProfile || false === $tokensByProfile->valid())
         {
-            $DeduplicatorExecuted->delete();
             return;
         }
 

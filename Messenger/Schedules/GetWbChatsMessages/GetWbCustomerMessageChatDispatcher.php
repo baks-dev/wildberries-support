@@ -135,7 +135,6 @@ final class GetWbCustomerMessageChatDispatcher
 
         if(false === $tokensByProfile || false === $tokensByProfile->valid())
         {
-            $DeduplicatorExecuted->delete();
             return;
         }
 
@@ -376,7 +375,5 @@ final class GetWbCustomerMessageChatDispatcher
                 $Deduplicator->save();
             }
         }
-
-        $DeduplicatorExecuted->delete();
     }
 }
