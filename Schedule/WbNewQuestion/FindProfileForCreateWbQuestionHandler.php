@@ -72,7 +72,7 @@ final readonly class FindProfileForCreateWbQuestionHandler
             $this->messageDispatch->dispatch(
                 message: new GetWbQuestionsMessage($profile),
                 stamps: [new MessageDelay(FindProfileForCreateWbQuestionSchedule::INTERVAL)],
-                transport: (string) $profile,
+                transport: (string) $profile.'-low',
             );
         }
     }

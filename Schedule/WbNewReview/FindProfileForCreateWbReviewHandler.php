@@ -72,7 +72,7 @@ final readonly class FindProfileForCreateWbReviewHandler
             $this->messageDispatch->dispatch(
                 message: new GetWbReviewsMessage($profile),
                 stamps: [new MessageDelay(FindProfileForCreateWbReviewSchedule::INTERVAL)],
-                transport: (string) $profile,
+                transport: (string) $profile.'-low',
             );
         }
     }

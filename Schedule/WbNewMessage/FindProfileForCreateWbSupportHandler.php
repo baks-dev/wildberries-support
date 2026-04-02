@@ -72,7 +72,7 @@ final readonly class FindProfileForCreateWbSupportHandler
             $this->messageDispatch->dispatch(
                 message: new GetWbCustomerMessageChatMessage($profile),
                 stamps: [new MessageDelay(FindProfileForCreateWbSupportSchedule::INTERVAL)],
-                transport: (string) $profile,
+                transport: (string) $profile.'-low',
             );
         }
 
