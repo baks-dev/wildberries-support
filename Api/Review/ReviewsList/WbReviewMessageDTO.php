@@ -52,6 +52,12 @@ final class WbReviewMessageDTO
     /** Оценка товара */
     private int $valuation;
 
+    /**
+     * Артикул товара supplierArticle
+     */
+    private string $article;
+
+
     /** Есть ли текст у отзыва */
     private bool $isText = false;
 
@@ -71,6 +77,8 @@ final class WbReviewMessageDTO
         $this->userName = $data['userName'];
 
         $this->title = 'Отзыв к товару '.$data['productDetails']['productName'];
+
+        $this->article = $data['productDetails']['supplierArticle'];
     }
 
     public function formatData(array $data): string
@@ -187,4 +195,10 @@ final class WbReviewMessageDTO
     {
         return $this->isText;
     }
+
+    public function getArticle(): string
+    {
+        return $this->article;
+    }
+
 }
