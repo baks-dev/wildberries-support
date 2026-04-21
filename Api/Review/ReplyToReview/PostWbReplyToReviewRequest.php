@@ -84,10 +84,15 @@ final class PostWbReplyToReviewRequest extends Wildberries
         if($response->getStatusCode() !== 204)
         {
             $this->logger->critical(
-                sprintf('wildberries-support: Ошибка отправки ответа на отзыв'),
+                sprintf('wildberries-support: Ошибка %s отправки ответа на отзыв', $response->getStatusCode()),
                 [
                     self::class.':'.__LINE__,
                 ]);
+
+            if($response->getStatusCode() === 429)
+            {
+                sleep(1);
+            }
 
             return false;
         }
