@@ -26,6 +26,8 @@ declare(strict_types=1);
 namespace BaksDev\Wildberries\Support\Api\Review\ReviewsList;
 
 use BaksDev\Wildberries\Api\Wildberries;
+use BaksDev\Wildberries\Support\Schedule\WbNewReview\FindProfileForCreateWbReviewSchedule;
+use DateInterval;
 use Generator;
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -62,6 +64,9 @@ final class GetWbReviewsListRequest extends Wildberries
 
         while(true)
         {
+            $cache = $this->getCacheInit('wildberries-support');
+            $key = md5(self::class.$this->getProfile().$this->from.$skip.$take);
+
             $query = [
                 'isAnswered' => false,
                 'take' => $take,
@@ -73,35 +78,51 @@ final class GetWbReviewsListRequest extends Wildberries
                 $query['dateFrom'] = $this->from;
             }
 
-            $response = $this
-                ->feedbacks()
-                ->TokenHttpClient()
-                ->request(
-                    method: 'GET',
-                    url: 'api/v1/feedbacks',
-                    options: [
-                        "query" => $query,
-                    ],
-                );
+            $content = $cache->get($key, function(ItemInterface $item) use ($query) {
 
-            $content = $response->toArray(false);
+                $item->expiresAfter(DateInterval::createFromDateString('1 seconds'));
 
-            if($response->getStatusCode() !== 200)
-            {
-                $this->logger->critical(
-                    sprintf('wildberries-support: Ошибка %s получения списка отзывов', $response->getStatusCode()),
-                    [
-                        self::class.':'.__LINE__,
-                        $content,
-                    ]);
+                sleep(1);
 
-                if($response->getStatusCode() === 429)
+                $response = $this
+                    ->feedbacks()
+                    ->TokenHttpClient()
+                    ->request(
+                        method: 'GET',
+                        url: 'api/v1/feedbacks',
+                        options: [
+                            "query" => $query,
+                        ],
+                    );
+
+                $content = $response->toArray(false);
+
+                if($response->getStatusCode() !== 200)
                 {
-                    sleep(1);
+                    $this->logger->critical(
+                        sprintf('wildberries-support: Ошибка %s получения списка отзывов', $response->getStatusCode()),
+                        [
+                            self::class.':'.__LINE__,
+                            $content,
+                        ]);
+
+                    if($response->getStatusCode() === 429)
+                    {
+                        sleep(1);
+                    }
+
+                    return false;
                 }
 
-                return false;
-            }
+                $item->expiresAfter(
+                    DateInterval::createFromDateString(
+                        FindProfileForCreateWbReviewSchedule::INTERVAL,
+                    ),
+                );
+
+                return $content;
+
+            });
 
 
             $reviews = $content['data']['feedbacks'];

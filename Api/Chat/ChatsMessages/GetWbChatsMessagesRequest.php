@@ -63,6 +63,8 @@ final class GetWbChatsMessagesRequest extends Wildberries
 
             $content = $cache->get($key, function(ItemInterface $item) {
 
+                sleep(1);
+
                 $item->expiresAfter(DateInterval::createFromDateString('1 seconds'));
 
                 $response = $this
@@ -82,6 +84,11 @@ final class GetWbChatsMessagesRequest extends Wildberries
 
                 if($response->getStatusCode() !== 200)
                 {
+                    if($response->getStatusCode() === 429)
+                    {
+                        sleep(1);
+                    }
+
                     $this->logger->critical(
                         sprintf('wildberries-support: Ошибка получения списка сообщений'),
                         [

@@ -74,6 +74,9 @@ final class GetWbQuestionsListRequest extends Wildberries
             }
 
             $content = $cache->get($key, function(ItemInterface $item) use ($query) {
+
+                sleep(1);
+
                 $item->expiresAfter(DateInterval::createFromDateString('1 seconds'));
 
                 $response = $this
