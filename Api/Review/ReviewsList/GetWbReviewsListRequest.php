@@ -80,9 +80,9 @@ final class GetWbReviewsListRequest extends Wildberries
 
             $content = $cache->get($key, function(ItemInterface $item) use ($query) {
 
-                $item->expiresAfter(DateInterval::createFromDateString('1 seconds'));
-
                 sleep(1);
+
+                $item->expiresAfter(DateInterval::createFromDateString('1 seconds'));
 
                 $response = $this
                     ->feedbacks()
@@ -127,7 +127,7 @@ final class GetWbReviewsListRequest extends Wildberries
 
             $reviews = $content['data']['feedbacks'];
 
-            if(count($reviews) === 0)
+            if(empty($reviews) || count($reviews) === 0)
             {
                 break;
             }
@@ -138,8 +138,6 @@ final class GetWbReviewsListRequest extends Wildberries
             }
 
             $skip += self::LIMIT;
-
-            usleep(400000);
         }
     }
 }
