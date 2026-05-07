@@ -32,7 +32,7 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 #[AutoconfigureTag('baks.schedule')]
 final class FindProfileForCreateWbSupportSchedule implements ScheduleInterface
 {
-    const string INTERVAL = '1 minutes';
+    const string INTERVAL = '5 minutes';
 
     /** Возвращает экземпляр класса сообщения */
     public function getMessage(): object
