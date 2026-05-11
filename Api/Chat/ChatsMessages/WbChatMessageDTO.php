@@ -124,8 +124,13 @@ final class WbChatMessageDTO
             foreach($data['message']['attachments']['images'] as $image)
             {
                 $imageSrc = $image['url'];
-
                 $info = pathinfo($imageSrc);
+
+                if(empty($info['extension']))
+                {
+                    continue;
+                }
+
                 $extension = $info['extension'];
 
                 try

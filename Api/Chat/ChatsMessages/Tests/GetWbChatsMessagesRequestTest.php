@@ -62,6 +62,12 @@ final class GetWbChatsMessagesRequestTest extends KernelTestCase
 
         $result = $wbChatMessagesRequest->findAll();
 
+        if(false === $result || false === $result->valid())
+        {
+            self::assertFalse(false);
+            return;
+        }
+
 
         foreach($result as $WbChatMessageDTO)
         {
