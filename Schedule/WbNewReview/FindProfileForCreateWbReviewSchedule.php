@@ -31,7 +31,7 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 #[AutoconfigureTag('baks.schedule')]
 final class FindProfileForCreateWbReviewSchedule
 {
-    const string INTERVAL = '5 minutes';
+    const string INTERVAL = '1 hour';
 
     /** Возвращает экземпляр класса сообщения */
     public function getMessage(): object
