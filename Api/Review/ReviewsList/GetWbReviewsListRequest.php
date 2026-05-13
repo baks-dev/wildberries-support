@@ -99,17 +99,17 @@ final class GetWbReviewsListRequest extends Wildberries
 
                 if($response->getStatusCode() !== 200)
                 {
+                    if($response->getStatusCode() === 429)
+                    {
+                        sleep(1);
+                    }
+
                     $this->logger->critical(
                         sprintf('wildberries-support: Ошибка %s получения списка отзывов', $response->getStatusCode()),
                         [
                             self::class.':'.__LINE__,
                             $content,
                         ]);
-
-                    if($response->getStatusCode() === 429)
-                    {
-                        sleep(1);
-                    }
 
                     return false;
                 }
@@ -124,10 +124,14 @@ final class GetWbReviewsListRequest extends Wildberries
 
             });
 
+            if(empty($content))
+            {
+                break;
+            }
 
-            $reviews = $content['data']['feedbacks'];
+            $reviews = $content['data']['feedbacks'] ?? false;
 
-            if(empty($reviews) || count($reviews) === 0)
+            if(empty($reviews) || count($reviews) < self::LIMIT)
             {
                 break;
             }

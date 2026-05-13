@@ -36,6 +36,7 @@ use Symfony\Contracts\Cache\ItemInterface;
 final class GetWbQuestionsListRequest extends Wildberries
 {
     const int LIMIT = 10000;
+
     private int|false $from = false;
 
     public function from(int $time): self
@@ -118,16 +119,22 @@ final class GetWbQuestionsListRequest extends Wildberries
                 return $content;
             });
 
-            $questions = $content['data']['questions'];
 
-            foreach($questions as $question)
+            if(empty($content))
             {
-                yield new WbQuestionMessageDTO($question);
+                break;
             }
+
+            $questions = $content['data']['questions'];
 
             if(empty($questions) || count($questions) < self::LIMIT)
             {
                 break;
+            }
+
+            foreach($questions as $question)
+            {
+                yield new WbQuestionMessageDTO($question);
             }
 
             $skip += self::LIMIT;
